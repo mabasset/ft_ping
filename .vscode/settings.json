@@ -1,0 +1,9 @@
+{
+  "editor.formatOnSave": true,
+  "[c]": {
+    "editor.defaultFormatter": "ms-vscode.cpptools",
+    "editor.detectIndentation": false,
+    "editor.tabSize": 2,
+  },
+  "C_Cpp.clang_format_style": "Chromium",
+}
