@@ -1,0 +1,3 @@
+[submodule "libmb"]
+	path = libmb
+	url = https://github.com/mabasset/libmb.git
