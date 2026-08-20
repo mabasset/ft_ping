@@ -3,4 +3,14 @@
 
 #include "../libmb/libmb.h"
 
+#include <getopt.h>
+#include <stdio.h>
+#include <stdlib.h>
+
+typedef struct {
+  int verbose;
+} t_flags;
+
+void print_usage();
+
 #endif
