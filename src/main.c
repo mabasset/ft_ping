@@ -18,8 +18,7 @@ int main(int argc, char* argv[]) {
         g_flags.verbose = 1;
         break;
       case 'h':
-        printf("Usage: %s [-v] [-o file] [--verbose] [--output file]\n",
-               argv[0]);
+        print_help();
         return 0;
       case 'u':
         print_usage();

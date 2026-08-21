@@ -12,5 +12,6 @@ typedef struct {
 } t_flags;
 
 void print_usage();
+void print_help();
 
 #endif
