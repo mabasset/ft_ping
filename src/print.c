@@ -63,6 +63,23 @@ void print_help() {
       "optional\n"
       "for any corresponding short options.\n\n"
       "Options marked with (root only) are available only to superuser.\n\n"
-      "Report bugs to <bug-inetutils@gnu.org>.\";\n";
+      "Report bugs to <bug-inetutils@gnu.org>.\n";
   ft_putstr(help);
+}
+
+void print_version() {
+  char* version =
+      "ping (GNU inetutils) 2.0\n"
+      "Copyright(C) 2021 Free Software Foundation, Inc.\n"
+      "License GPLv3 + : GNU GPL version 3 or later "
+      "<https://gnu.org/licenses/gpl.html>.\n"
+      "This is free software: you are free to change and redistribute it.\n"
+      "There is NO WARRANTY, to the extent permitted by law.\n\n"
+      "Written by Sergey Poznyakoff.\n";
+  ft_putstr(version);
+}
+
+void print_more_info() {
+  fprintf(stderr,
+          "Try 'ping --help' or 'ping --usage' for more information.\n");
 }

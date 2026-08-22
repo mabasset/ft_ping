@@ -14,5 +14,7 @@ typedef struct {
 
 void print_usage();
 void print_help();
+void print_version();
+void print_more_info();
 
 #endif
