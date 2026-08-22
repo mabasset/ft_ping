@@ -3,24 +3,26 @@
 t_flags g_flags = {0};
 
 int main(int argc, char* argv[]) {
+  enum { OPT_HELP = 1, OPT_USAGE };
   static struct option options[] = {{"verbose", no_argument, NULL, 'v'},
-                                    {"help", no_argument, NULL, 'h'},
-                                    {"usage", no_argument, NULL, 'u'},
+                                    {"help", no_argument, NULL, OPT_HELP},
+                                    {"usage", no_argument, NULL, OPT_USAGE},
                                     {0, 0, 0, 0}};
-  opterr = 0;
   int opt;
   int index = 0;
-  while ((opt = getopt_long(argc, argv, "vhu", options, &index)) != -1) {
+  opterr = 0;
+
+  while ((opt = getopt_long(argc, argv, "v", options, &index)) != -1) {
     switch (opt) {
       case 0:
         break;
       case 'v':
         g_flags.verbose = 1;
         break;
-      case 'h':
+      case OPT_HELP:
         print_help();
         return 0;
-      case 'u':
+      case OPT_USAGE:
         print_usage();
         return 0;
       case '?':
