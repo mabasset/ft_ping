@@ -7,9 +7,9 @@ int main(int argc, char* argv[]) {
                                     {"help", no_argument, NULL, 'h'},
                                     {"usage", no_argument, NULL, 'u'},
                                     {0, 0, 0, 0}};
+  opterr = 0;
   int opt;
   int index = 0;
-
   while ((opt = getopt_long(argc, argv, "vhu", options, &index)) != -1) {
     switch (opt) {
       case 0:
@@ -24,7 +24,17 @@ int main(int argc, char* argv[]) {
         print_usage();
         return 0;
       case '?':
-        return 1;
+        if (optopt == '?') {
+          print_help();
+          return 0;
+        }
+        if (optopt == 0)
+          fprintf(stderr, "ping: unrecognized option '%s'\n", argv[optind - 1]);
+        else
+          fprintf(stderr, "ping: invalid option -- '%c'\n", optopt);
+        fprintf(stderr,
+                "Try 'ping --help' or 'ping --usage' for more information.\n");
+        return 64;
       default:
         break;
     }

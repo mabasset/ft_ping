@@ -1,11 +1,12 @@
-#ifndef FT_NM_H
-#define FT_NM_H
+#ifndef FT_PING_H
+#define FT_PING_H
 
 #include "../libmb/libmb.h"
 
 #include <getopt.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 
 typedef struct {
   int verbose;
