@@ -2,6 +2,23 @@
 
 t_flags g_flags = {0};
 
+int resolve_target(const char* host, t_target* target) {
+  struct addrinfo hints = {0};
+  struct addrinfo* res;
+
+  hints.ai_family = AF_INET;
+
+  if (getaddrinfo(host, NULL, &hints, &res) != 0)
+    return -1;
+
+  target->hostname = host;
+  target->addr = *(struct sockaddr_in*)res->ai_addr;
+  inet_ntop(AF_INET, &target->addr.sin_addr, target->ip, sizeof(target->ip));
+
+  freeaddrinfo(res);
+  return 0;
+}
+
 int main(int argc, char* argv[]) {
   enum { OPT_HELP = 1, OPT_USAGE };
   static struct option options[] = {{"verbose", no_argument, NULL, 'v'},
@@ -50,6 +67,14 @@ int main(int argc, char* argv[]) {
     print_more_info();
     return 64;
   }
+
+  t_target target;
+  if (resolve_target(argv[optind], &target) != 0) {
+    fprintf(stderr, "ping: unknown host\n");
+    return 1;
+  }
+
+  printf("PING %s (%s): 56 data bytes\n", target.hostname, target.ip);
 
   return 0;
 }
