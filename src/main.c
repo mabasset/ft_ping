@@ -75,7 +75,7 @@ int main(int argc, char* argv[]) {
   }
 
   int sockfd;
-  if (sockfd = socket(AF_INET, SOCK_RAW, IPPROTO_ICMP) == -1) {
+  if ((sockfd = socket(AF_INET, SOCK_RAW, IPPROTO_ICMP)) == -1) {
     fprintf(stderr, "ping: socket error\n");
     return 1;
   }
