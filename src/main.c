@@ -30,6 +30,7 @@ int main(int argc, char* argv[]) {
   int index = 0;
   opterr = 0;
 
+  // parse flags
   while ((opt = getopt_long(argc, argv, "vV", options, &index)) != -1) {
     switch (opt) {
       case 0:
@@ -68,15 +69,30 @@ int main(int argc, char* argv[]) {
     return 64;
   }
 
-  t_target target;
-  if (resolve_target(argv[optind], &target) != 0) {
-    fprintf(stderr, "ping: unknown host\n");
+  // open a socket
+  int sockfd = socket(AF_INET, SOCK_RAW, IPPROTO_ICMP);
+  if (sockfd == -1) {
+    switch (errno) {
+      case 1:
+        fprintf(stderr, "ping: Lacking privilege for icmp socket.\n");
+        break;
+      default:
+        fprintf(stderr, "ping: %s\n", strerror(errno));
+        break;
+    }
     return 1;
   }
 
-  int sockfd;
-  if ((sockfd = socket(AF_INET, SOCK_RAW, IPPROTO_ICMP)) == -1) {
-    fprintf(stderr, "ping: socket error\n");
+  // drop sudo privileges
+  if (setuid(getuid()) != 0) {
+    fprintf(stderr, "ping: setuid: %s\n", strerror(errno));
+    return 1;
+  }
+
+  // get the real ip
+  t_target target;
+  if (resolve_target(argv[optind], &target) != 0) {
+    fprintf(stderr, "ping: unknown host\n");
     return 1;
   }
 

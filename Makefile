@@ -38,4 +38,8 @@ fclean: clean
 
 re: fclean all
 
-.PHONY: all clean fclean re
+setuid: $(NAME)
+	sudo chown root:root ./$(NAME)
+	sudo chmod u+s ./$(NAME)
+
+.PHONY: all clean fclean re setuid
