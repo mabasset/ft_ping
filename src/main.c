@@ -2,6 +2,37 @@
 
 t_flags g_flags = {0};
 
+// RFC 1071 Internet checksum
+static uint16_t checksum(void* data, int len) {
+  uint16_t* buf = data;
+  uint32_t sum = 0;
+
+  for (; len > 1; len -= 2)
+    sum += *buf++;
+  if (len == 1)
+    sum += *(uint8_t*)buf;
+
+  sum = (sum >> 16) + (sum & 0xffff);
+  sum += (sum >> 16);
+  return (uint16_t)~sum;
+}
+
+void build_echo_request(t_icmp_packet* packet, uint16_t seq) {
+  memset(packet, 0, sizeof(*packet));
+
+  packet->hdr.type = ICMP_ECHO;
+  packet->hdr.code = 0;
+  packet->hdr.un.echo.id = htons(getuid());
+  packet->hdr.un.echo.sequence = htons(seq);
+
+  gettimeofday((struct timeval*)packet->payload, NULL);
+  for (size_t i = sizeof(struct timeval); i < PING_PAYLOAD_SIZE; i++)
+    packet->payload[i] = (char)i;
+
+  packet->hdr.checksum = 0;
+  packet->hdr.checksum = checksum(packet, PING_PACKET_SIZE);
+}
+
 int resolve_target(const char* host, t_target* target) {
   struct addrinfo hints = {0};
   struct addrinfo* res;
@@ -97,6 +128,15 @@ int main(int argc, char* argv[]) {
   }
 
   printf("PING %s (%s): 56 data bytes\n", target.hostname, target.ip);
+
+  t_icmp_packet packet;
+  build_echo_request(&packet, 0);
+
+  if (sendto(sockfd, &packet, sizeof(packet), 0, (struct sockaddr*)&target.addr,
+             sizeof(target.addr)) < 0) {
+    fprintf(stderr, "ping: sendto: %s\n", strerror(errno));
+    return 1;
+  }
 
   return 0;
 }
