@@ -2,9 +2,12 @@
   "configurations": [
     {
       "name": "linux-gcc-x64",
-      "includePath": ["${workspaceFolder}/src", "${workspaceFolder}/libmb"],
+      "includePath": [
+        "${workspaceFolder}/src",
+        "${workspaceFolder}/libmb"
+      ],
       "compilerPath": "/usr/bin/gcc",
-      "cStandard": "gnu17",
+      "cStandard": "gnu23",
       "intelliSenseMode": "linux-gcc-x64"
     }
   ],

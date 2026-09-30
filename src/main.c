@@ -1,68 +1,43 @@
 #include "ft_ping.h"
 
-t_flags g_flags = {0};
+t_flags g_flags = {.size = PING_DEFAULT_PAYLOAD_SIZE, .verbose = false};
 
-// RFC 1071 Internet checksum
-static uint16_t checksum(void* data, int len) {
-  uint16_t* buf = data;
-  uint32_t sum = 0;
+static int parse_size(const char* arg) {
+  char* stop;
+  g_flags.size = strtoul(arg, &stop, 0);
 
-  for (; len > 1; len -= 2)
-    sum += *buf++;
-  if (len == 1)
-    sum += *(uint8_t*)buf;
-
-  sum = (sum >> 16) + (sum & 0xffff);
-  sum += (sum >> 16);
-  return (uint16_t)~sum;
-}
-
-void build_echo_request(t_icmp_packet* packet, uint16_t seq) {
-  memset(packet, 0, sizeof(*packet));
-
-  packet->hdr.type = ICMP_ECHO;
-  packet->hdr.code = 0;
-  packet->hdr.un.echo.id = htons(getuid());
-  packet->hdr.un.echo.sequence = htons(seq);
-
-  gettimeofday((struct timeval*)packet->payload, NULL);
-  for (size_t i = sizeof(struct timeval); i < PING_PAYLOAD_SIZE; i++)
-    packet->payload[i] = (char)i;
-
-  packet->hdr.checksum = 0;
-  packet->hdr.checksum = checksum(packet, PING_PACKET_SIZE);
-}
-
-int resolve_target(const char* host, t_target* target) {
-  struct addrinfo hints = {0};
-  struct addrinfo* res;
-
-  hints.ai_family = AF_INET;
-
-  if (getaddrinfo(host, NULL, &hints, &res) != 0)
+  if (*stop != '\0') {
+    fprintf(stderr, "ping: invalid value (`%s' near `%s')\n", arg, stop);
     return -1;
-
-  target->hostname = host;
-  target->addr = *(struct sockaddr_in*)res->ai_addr;
-  inet_ntop(AF_INET, &target->addr.sin_addr, target->ip, sizeof(target->ip));
-
-  freeaddrinfo(res);
+  }
+  if (g_flags.size > PING_MAX_PAYLOAD_SIZE) {
+    fprintf(stderr, "ping: option value too big: %s\n", arg);
+    return -1;
+  }
   return 0;
+}
+
+static const char* long_option_name(const struct option* options, int val) {
+  for (; options->name != NULL; options++)
+    if (options->val == val)
+      return options->name;
+  return NULL;
 }
 
 int main(int argc, char* argv[]) {
   enum { OPT_HELP = 1, OPT_USAGE };
-  static struct option options[] = {{"verbose", no_argument, NULL, 'v'},
-                                    {"version", no_argument, NULL, 'V'},
-                                    {"help", no_argument, NULL, OPT_HELP},
+  static struct option options[] = {{"help", no_argument, NULL, OPT_HELP},
                                     {"usage", no_argument, NULL, OPT_USAGE},
+                                    {"size", required_argument, NULL, 's'},
+                                    {"verbose", no_argument, NULL, 'v'},
+                                    {"version", no_argument, NULL, 'V'},
                                     {0, 0, 0, 0}};
   int opt;
   int index = 0;
   opterr = 0;
 
   // parse flags
-  while ((opt = getopt_long(argc, argv, "vV", options, &index)) != -1) {
+  while ((opt = getopt_long(argc, argv, ":s:vV", options, &index)) != -1) {
     switch (opt) {
       case 0:
         break;
@@ -72,12 +47,25 @@ int main(int argc, char* argv[]) {
       case OPT_USAGE:
         print_usage();
         return 0;
+      case 's':
+        if (parse_size(optarg) != 0)
+          return 1;
+        break;
       case 'v':
         g_flags.verbose = 1;
         break;
       case 'V':
         print_version();
         return 0;
+      case ':':
+        if (strncmp(argv[optind - 1], "--", 2) == 0)
+          fprintf(stderr, "ping: option '--%s' requires an argument\n",
+                  long_option_name(options, optopt));
+        else
+          fprintf(stderr, "ping: option requires an argument -- '%c'\n",
+                  optopt);
+        print_more_info();
+        return 64;
       case '?':
         if (optopt == '?') {
           print_help();
@@ -100,7 +88,11 @@ int main(int argc, char* argv[]) {
     return 64;
   }
 
-  // open a socket
+  /* open a socket
+   * AF_INET: network layer ipv4
+   * SOCK_RAW: no transport layer header
+   * IPPROTO_ICMP: icmp messages
+   */
   int sockfd = socket(AF_INET, SOCK_RAW, IPPROTO_ICMP);
   if (sockfd == -1) {
     switch (errno) {
@@ -120,20 +112,21 @@ int main(int argc, char* argv[]) {
     return 1;
   }
 
-  // get the real ip
+  // get the target infos
   t_target target;
   if (resolve_target(argv[optind], &target) != 0) {
     fprintf(stderr, "ping: unknown host\n");
     return 1;
   }
 
-  printf("PING %s (%s): 56 data bytes\n", target.hostname, target.ip);
+  printf("PING %s (%s): %ld data bytes\n", target.hostname, target.ip,
+         g_flags.size);
 
   t_icmp_packet packet;
   build_echo_request(&packet, 0);
 
-  if (sendto(sockfd, &packet, sizeof(packet), 0, (struct sockaddr*)&target.addr,
-             sizeof(target.addr)) < 0) {
+  if (sendto(sockfd, &packet, sizeof(packet.hdr) + g_flags.size, 0,
+             (struct sockaddr*)&target.addr, sizeof(target.addr)) < 0) {
     fprintf(stderr, "ping: sendto: %s\n", strerror(errno));
     return 1;
   }
