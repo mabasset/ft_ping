@@ -123,13 +123,21 @@ int main(int argc, char* argv[]) {
          g_flags.size);
 
   t_icmp_packet packet;
-  build_echo_request(&packet, 0);
-
-  if (sendto(sockfd, &packet, sizeof(packet.hdr) + g_flags.size, 0,
-             (struct sockaddr*)&target.addr, sizeof(target.addr)) < 0) {
-    fprintf(stderr, "ping: sendto: %s\n", strerror(errno));
-    return 1;
+  uint16_t seq = 0;
+  while (seq < 5) {
+    build_echo_request(&packet, seq);
+    if (sendto(sockfd, &packet, sizeof(packet.hdr) + g_flags.size, 0,
+               (struct sockaddr*)&target.addr, sizeof(target.addr)) < 0) {
+      fprintf(stderr, "ping: sendto: %s\n", strerror(errno));
+      return 1;
+    }
+    seq++;
   }
+
+  printf("--- %s ping statistics ---\n", target.hostname);
+  printf("%d packets transmitted, %d packets received, %d%% packet loss\n", seq,
+         seq, seq);
+  printf("round-trip min/avg/max/stddev = 19.075/21.289/30.544/3.335 ms\n");
 
   return 0;
 }

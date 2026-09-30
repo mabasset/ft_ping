@@ -29,3 +29,26 @@ int resolve_target(const char* hostname, t_target* target) {
   freeaddrinfo(res);
   return 0;
 }
+
+void build_echo_request(t_icmp_packet* packet, uint16_t seq) {
+  memset(packet, 0, sizeof(*packet));
+
+  packet->hdr.type = ICMP_ECHO;
+  packet->hdr.code = 0;
+  packet->hdr.un.echo.id = htons(getpid() & 0xFFFF);
+  packet->hdr.un.echo.sequence = htons(seq);
+
+  size_t i = 0;
+  if (g_flags.size >= sizeof(struct timeval)) {
+    i = sizeof(struct timeval);
+    gettimeofday((struct timeval*)packet->payload, NULL);
+  }
+
+  while (i < g_flags.size) {
+    packet->payload[i] = (char)i;
+    i++;
+  }
+
+  packet->hdr.checksum = 0;
+  packet->hdr.checksum = checksum(packet, sizeof(packet->hdr) + g_flags.size);
+}

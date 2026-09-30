@@ -34,18 +34,17 @@ typedef struct {
   char payload[PING_MAX_PAYLOAD_SIZE];
 } t_icmp_packet;
 
-extern t_flags g_flags;
-
 // print.c
 void print_usage();
 void print_help();
 void print_version();
 void print_more_info();
 
-// request.c
+// icmp.c
+int resolve_target(const char* hostname, t_target* target);
 void build_echo_request(t_icmp_packet* packet, uint16_t seq);
 
-// init.c
-int resolve_target(const char* hostname, t_target* target);
+// math.c
+uint16_t checksum(void* data, int len);
 
 #endif
