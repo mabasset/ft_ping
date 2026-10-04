@@ -11,7 +11,7 @@ OBJ = $(patsubst $(S_DIR)%.c, $(O_DIR)%.o, $(SRCS))
 HDR = $(addprefix $(S_DIR), ft_ping.h)
 LIB = $(addprefix $(L_DIR), libmb.a)
 
-CFLAGS = -Wall -Wextra -Werror -std=gnu23 -g
+CFLAGS = -std=gnu23
 LIBFLAGS = -Llibmb -lmb
 
 all: $(NAME)

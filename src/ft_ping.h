@@ -12,16 +12,12 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <sys/select.h>
 #include <sys/time.h>
 #include <unistd.h>
 
 #define PING_DEFAULT_PAYLOAD_SIZE 56
 #define PING_MAX_PAYLOAD_SIZE 65399
-
-typedef struct {
-  bool verbose;
-  size_t size;
-} t_flags;
 
 typedef struct {
   const char* hostname;
@@ -33,6 +29,16 @@ typedef struct {
   struct icmphdr hdr;
   char payload[PING_MAX_PAYLOAD_SIZE];
 } t_icmp_packet;
+
+typedef struct {
+  int sockfd;
+  char** hosts;
+  int host_count;
+
+  bool verbose;
+  size_t packet_count;
+  size_t payload_size;
+} t_ping;
 
 // print.c
 void print_usage();
@@ -46,5 +52,9 @@ void build_echo_request(t_icmp_packet* packet, uint16_t seq);
 
 // math.c
 uint16_t checksum(void* data, int len);
+long timeval_to_usec(struct timeval tv);
+struct timeval usec_to_timeval(long us);
+
+void parse_arguments(int argc, char* argv[]);
 
 #endif
