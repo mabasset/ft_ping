@@ -9,6 +9,7 @@
 #include <netdb.h>
 #include <netinet/in.h>
 #include <netinet/ip_icmp.h>
+#include <signal.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -34,6 +35,7 @@ typedef struct {
   int sockfd;
   char** hosts;
   int host_count;
+  volatile sig_atomic_t sigint;
 
   bool verbose;
   size_t packet_count;
@@ -45,10 +47,7 @@ void print_usage();
 void print_help();
 void print_version();
 void print_more_info();
-
-// icmp.c
-int resolve_target(const char* hostname, t_target* target);
-void build_echo_request(t_icmp_packet* packet, uint16_t seq);
+void print_ping_header(char* hostname, char* ip, int payload_size);
 
 // math.c
 uint16_t checksum(void* data, int len);
@@ -56,5 +55,7 @@ long timeval_to_usec(struct timeval tv);
 struct timeval usec_to_timeval(long us);
 
 void parse_arguments(int argc, char* argv[]);
+
+void run_ping();
 
 #endif

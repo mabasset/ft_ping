@@ -16,7 +16,7 @@ LIBFLAGS = -Llibmb -lmb
 
 all: $(NAME)
 
-$(NAME): $(LIB) $(HDR) $(OBJ)
+$(NAME): $(LIB) $(OBJ)
 	gcc -o $@ $(OBJ) $(LIBFLAGS)
 
 $(LIB):

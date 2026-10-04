@@ -40,25 +40,6 @@ static const char* get_long_option_name(const struct option* options, int val) {
   return NULL;
 }
 
-static int resolve_target(const char* hostname, t_target* target) {
-  struct addrinfo hints = {0};
-  struct addrinfo* res;
-
-  hints.ai_family = AF_INET;
-  hints.ai_socktype = SOCK_RAW;
-  hints.ai_protocol = IPPROTO_ICMP;
-  hints.ai_flags = 0;
-
-  if (getaddrinfo(hostname, NULL, &hints, &res) != 0)
-    return -1;
-  target->hostname = hostname;
-  target->addr = *(struct sockaddr_in*)res->ai_addr;
-  inet_ntop(AF_INET, &target->addr.sin_addr, target->ip, sizeof(target->ip));
-
-  freeaddrinfo(res);
-  return 0;
-}
-
 void parse_arguments(int argc, char* argv[]) {
   enum { OPT_HELP = 1, OPT_USAGE };
   static struct option options[] = {{"help", no_argument, NULL, OPT_HELP},
