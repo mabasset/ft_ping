@@ -84,6 +84,8 @@ void print_more_info() {
           "Try 'ping --help' or 'ping --usage' for more information.\n");
 }
 
-void print_ping_header(char* hostname, char* ip, int payload_size) {
+void print_ping_header(const char* hostname,
+                       const char* ip,
+                       const int payload_size) {
   printf("PING %s (%s): %ld data bytes\n", hostname, ip, payload_size);
 }

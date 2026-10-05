@@ -36,9 +36,11 @@ typedef struct {
   char** hosts;
   int host_count;
   volatile sig_atomic_t sigint;
+  size_t request_count;
+  size_t reply_count;
 
   bool verbose;
-  size_t packet_count;
+  size_t count;
   size_t payload_size;
 } t_ping;
 
@@ -47,7 +49,9 @@ void print_usage();
 void print_help();
 void print_version();
 void print_more_info();
-void print_ping_header(char* hostname, char* ip, int payload_size);
+void print_ping_header(const char* hostname,
+                       const char* ip,
+                       const int payload_size);
 
 // math.c
 uint16_t checksum(void* data, int len);

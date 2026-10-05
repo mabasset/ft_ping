@@ -24,8 +24,8 @@ static int parse_payload_size(const char* arg) {
 
 static int parse_packet_count(const char* arg) {
   char* stop;
-  g_ping.packet_count = strtoul(arg, &stop, 0);
 
+  g_ping.count = strtoul(arg, &stop, 0);
   if (*stop != '\0') {
     fprintf(stderr, "ping: invalid value (`%s' near `%s')\n", arg, stop);
     return -1;
@@ -48,6 +48,8 @@ void parse_arguments(int argc, char* argv[]) {
                                     {"size", required_argument, NULL, 's'},
                                     {"verbose", no_argument, NULL, 'v'},
                                     {"version", no_argument, NULL, 'V'},
+                                    {"timeout", required_argument, NULL, 'w'},
+                                    {"linger", required_argument, NULL, 'W'},
                                     {0, 0, 0, 0}};
   int opt;
   int index = 0;
