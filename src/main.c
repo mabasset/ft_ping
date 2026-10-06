@@ -41,7 +41,8 @@ static void set_siganction() {
 
 int main(int argc, char* argv[]) {
   setvbuf(stdout, NULL, _IOLBF, 0);  // line-buffered even into a pipe or file
-  parse_arguments(argc, argv);
+  parse_flags(argc, argv);
+  parse_hosts(argc, argv);
   create_socket();
   atexit(cleanup);
   drop_sudo();

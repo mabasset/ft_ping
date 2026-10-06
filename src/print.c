@@ -1,6 +1,6 @@
 #include "ft_ping.h"
 
-void print_usage() {
+void print_usage_exit() {
   char* usage =
       "Usage: ping [-dnrvfqR?V] [-t TYPE] [-c NUMBER] [-i NUMBER] [-T NUM] [-w "
       "N]\n"
@@ -18,9 +18,10 @@ void print_usage() {
       "[--version]\n"
       "            HOST ...\n";
   ft_putstr(usage);
+  exit(0);
 }
 
-void print_help() {
+void print_help_exit() {
   char* help =
       "Usage: ping [OPTION...] HOST ...\n"
       "Send ICMP ECHO_REQUEST packets to network hosts.\n\n"
@@ -65,9 +66,10 @@ void print_help() {
       "Options marked with (root only) are available only to superuser.\n\n"
       "Report bugs to <bug-inetutils@gnu.org>.\n";
   ft_putstr(help);
+  exit(0);
 }
 
-void print_version() {
+void print_version_exit() {
   char* version =
       "ping (GNU inetutils) 2.0\n"
       "Copyright(C) 2021 Free Software Foundation, Inc.\n"
@@ -77,11 +79,23 @@ void print_version() {
       "There is NO WARRANTY, to the extent permitted by law.\n\n"
       "Written by Sergey Poznyakoff.\n";
   ft_putstr(version);
+  exit(0);
 }
 
-void print_more_info() {
+void print_more_info_exit() {
   fprintf(stderr,
           "Try 'ping --help' or 'ping --usage' for more information.\n");
+  exit(64);
+}
+
+void print_invalid_value_exit(const char* stop) {
+  fprintf(stderr, "ping: invalid value (`%s' near `%s')\n", optarg, stop);
+  exit(1);
+}
+
+void print_big_value_exit() {
+  fprintf(stderr, "ping: option value too big: %s\n", optarg);
+  exit(1);
 }
 
 void print_ping_header(const char* hostname,

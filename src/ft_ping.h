@@ -6,6 +6,7 @@
 #include <arpa/inet.h>
 #include <errno.h>
 #include <getopt.h>
+#include <limits.h>
 #include <netdb.h>
 #include <netinet/in.h>
 #include <netinet/ip_icmp.h>
@@ -40,15 +41,18 @@ typedef struct {
   size_t reply_count;
 
   bool verbose;
-  size_t count;
+  size_t packet_limit;
   size_t payload_size;
+  size_t linger_seconds;
 } t_ping;
 
 // print.c
-void print_usage();
-void print_help();
-void print_version();
-void print_more_info();
+void print_usage_exit();
+void print_help_exit();
+void print_version_exit();
+void print_more_info_exit();
+void print_invalid_value_exit(const char* stop);
+void print_big_value_exit();
 void print_ping_header(const char* hostname,
                        const char* ip,
                        const int payload_size);
@@ -58,7 +62,8 @@ uint16_t checksum(void* data, int len);
 long timeval_to_usec(struct timeval tv);
 struct timeval usec_to_timeval(long us);
 
-void parse_arguments(int argc, char* argv[]);
+void parse_flags(int argc, char* argv[]);
+void parse_hosts(int argc, char* argv[]);
 
 void run_ping();
 

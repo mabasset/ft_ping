@@ -51,7 +51,7 @@ void build_echo_request(t_icmp_packet* packet,
 static void send_echo_request(t_icmp_packet* packet,
                               struct timeval* send_time,
                               struct sockaddr_in addr) {
-  if (g_ping.count && g_ping.request_count >= g_ping.count)
+  if (g_ping.packet_limit && g_ping.request_count >= g_ping.packet_limit)
     return;
   gettimeofday(send_time, NULL);
   build_echo_request(packet, g_ping.request_count, send_time);
@@ -64,14 +64,13 @@ static int receive_echo_reply() {
   char buffer[15 * 4 + sizeof(t_icmp_packet)];  // max IP header + ICMP packet
   struct sockaddr_in from;           // filled by the kernel: who sent it
   socklen_t fromlen = sizeof(from);  // in/out
-  // struct timeval now;
+  struct timeval now;
 
   ssize_t n = recvfrom(g_ping.sockfd, buffer, sizeof(buffer), 0,
                        (struct sockaddr*)&from, &fromlen);
-  printf("%d\n", n);
-  // if (n < 0)
-  //   return -1;
-  // gettimeofday(&now, NULL);
+  if (n < 0)
+    return -1;
+  gettimeofday(&now, NULL);
 
   // struct iphdr* ip = (struct iphdr*)buffer;
   // size_t ip_len = ip->ihl * 4;
@@ -94,7 +93,9 @@ static int receive_echo_reply() {
 
   // printf("%zu bytes from %s: icmp_seq=%u ttl=%u time=%.3f ms\n", icmp_len,
   //        ip_str, seq, ip->ttl, rtt);
-  // return 0;
+  g_ping.reply_count++;
+
+  return 0;
 }
 
 static void set_select_timeout(struct timeval* select_timeout,
@@ -111,6 +112,11 @@ static void set_select_timeout(struct timeval* select_timeout,
   *select_timeout = usec_to_timeval(usec);
 }
 
+void reset_ping() {
+  g_ping.request_count = 0;
+  g_ping.reply_count = 0;
+}
+
 void run_ping() {
   t_target target;
   struct timeval send_time;
@@ -120,11 +126,12 @@ void run_ping() {
   int ready_fds;
 
   for (int i = 0; i < g_ping.host_count; i++) {
+    reset_ping();
     resolve_target(g_ping.hosts[i], &target);
     print_ping_header(target.hostname, target.ip, g_ping.payload_size);
     send_echo_request(&packet, &send_time, target.addr);
     while (!g_ping.sigint &&
-           (!g_ping.count || g_ping.reply_count < g_ping.count)) {
+           (!g_ping.packet_limit || g_ping.reply_count < g_ping.packet_limit)) {
       FD_ZERO(&fdset);
       FD_SET(g_ping.sockfd, &fdset);
       set_select_timeout(&select_timeout, send_time);
@@ -141,8 +148,8 @@ void run_ping() {
     }
 
     printf("--- %s ping statistics ---\n", target.hostname);
-    printf("%d packets transmitted, %d packets received, %d%% packet loss\n ",
-           1, 1, 0);
+    printf("%d packets transmitted, %d packets received, %d%% packet loss\n",
+           g_ping.request_count, g_ping.reply_count, 0);
     printf("round-trip min/avg/max/stddev = 19.075/21.289/30.544/3.335 ms\n");
   }
 }
