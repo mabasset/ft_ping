@@ -1,5 +1,7 @@
 #include "ft_ping.h"
 
+extern t_ping g_ping;
+
 void print_usage_exit() {
   char* usage =
       "Usage: ping [-dnrvfqR?V] [-t TYPE] [-c NUMBER] [-i NUMBER] [-T NUM] [-w "
@@ -102,4 +104,46 @@ void print_ping_header(const char* hostname,
                        const char* ip,
                        const int payload_size) {
   printf("PING %s (%s): %ld data bytes\n", hostname, ip, payload_size);
+}
+
+double print_echo_reply(const struct iphdr* iphdr,
+                        const t_icmp_packet* icmp_packet,
+                        struct timeval recv_time) {
+  uint16_t sequence;
+  char replier_ip[INET_ADDRSTRLEN];
+  struct timeval send_time;
+  double rtt;
+
+  sequence = ntohs(icmp_packet->hdr.un.echo.sequence);
+  inet_ntop(AF_INET, &iphdr->saddr, replier_ip, sizeof(replier_ip));
+  if (icmp_packet->payload_len < sizeof(struct timeval)) {
+    printf("%zu bytes from %s: icmp_seq=%u ttl=%u\n",
+           icmp_packet->payload_len + sizeof(struct icmphdr), replier_ip,
+           sequence, iphdr->ttl);
+    return 0;
+  }
+  memcpy(&send_time, icmp_packet->payload, sizeof(send_time));
+  rtt = timeval_to_ms(recv_time) - timeval_to_ms(send_time);
+  printf("%zu bytes from %s: icmp_seq=%u ttl=%u time=%.3f ms\n",
+         icmp_packet->payload_len + sizeof(struct icmphdr), replier_ip,
+         sequence, iphdr->ttl, rtt);
+
+  return rtt;
+}
+
+void print_ping_stats(const char* hostname) {
+  double rtt_avg;
+  double rtt_var;
+
+  printf("--- %s ping statistics ---\n", hostname);
+  printf("%d packets transmitted, %d packets received, %d%% packet loss\n",
+         g_ping.request_count, g_ping.reply_count, 0);
+  if (g_ping.reply_count == 0)
+    return;
+  rtt_avg = g_ping.rtt_sum / g_ping.reply_count;
+  rtt_var = sqrt(g_ping.rtt_sum_sq / g_ping.reply_count - rtt_avg * rtt_avg);
+  if (rtt_var < 0)
+    rtt_var = 0;
+  printf("round-trip min/avg/max/stddev = %.3f/%.3f/%.3f/%.3f ms\n",
+         g_ping.rtt_min, rtt_avg, g_ping.rtt_max, rtt_var);
 }

@@ -12,7 +12,7 @@ HDR = $(addprefix $(S_DIR), ft_ping.h)
 LIB = $(addprefix $(L_DIR), libmb.a)
 
 CFLAGS = -std=gnu23
-LIBFLAGS = -Llibmb -lmb
+LIBFLAGS = -Llibmb -lmb -lm
 
 all: $(NAME)
 

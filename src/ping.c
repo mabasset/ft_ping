@@ -10,7 +10,6 @@ static void resolve_target(const char* hostname, t_target* target) {
   hints.ai_socktype = SOCK_RAW;
   hints.ai_protocol = IPPROTO_ICMP;
   hints.ai_flags = 0;
-
   if (getaddrinfo(hostname, NULL, &hints, &res) != 0) {
     fprintf(stderr, "ping: unknown host\n");
     exit(1);
@@ -18,7 +17,6 @@ static void resolve_target(const char* hostname, t_target* target) {
   target->hostname = hostname;
   target->addr = *(struct sockaddr_in*)res->ai_addr;
   inet_ntop(AF_INET, &target->addr.sin_addr, target->ip, sizeof(target->ip));
-
   freeaddrinfo(res);
 }
 
@@ -26,23 +24,19 @@ void build_echo_request(t_icmp_packet* packet,
                         uint16_t sequence,
                         struct timeval* send_time) {
   memset(packet, 0, sizeof(*packet));
-
   packet->hdr.type = ICMP_ECHO;
   packet->hdr.code = 0;
   packet->hdr.un.echo.id = htons(getpid() & 0xFFFF);
   packet->hdr.un.echo.sequence = htons(sequence);
-
   size_t i = 0;
   if (g_ping.payload_size >= sizeof(struct timeval)) {
     i = sizeof(struct timeval);
     memcpy(packet->payload, send_time, sizeof(struct timeval));
   }
-
   while (i < g_ping.payload_size) {
     packet->payload[i] = (char)i;
     i++;
   }
-
   packet->hdr.checksum = 0;
   packet->hdr.checksum =
       checksum(packet, sizeof(packet->hdr) + g_ping.payload_size);
@@ -60,40 +54,56 @@ static void send_echo_request(t_icmp_packet* packet,
   g_ping.request_count++;
 }
 
-static int receive_echo_reply() {
-  char buffer[15 * 4 + sizeof(t_icmp_packet)];  // max IP header + ICMP packet
-  struct sockaddr_in from;           // filled by the kernel: who sent it
-  socklen_t fromlen = sizeof(from);  // in/out
-  struct timeval now;
+static ssize_t read_packet(struct iphdr* iphdr,
+                           t_icmp_packet* icmp_packet,
+                           struct timeval* recv_time) {
+  char buffer[15 * 4 + sizeof(struct icmphdr) +
+              PING_MAX_PAYLOAD_SIZE];  // max IP header + ICMP packet
+  ssize_t n_bytes;
+  size_t iphdr_len;
 
-  ssize_t n = recvfrom(g_ping.sockfd, buffer, sizeof(buffer), 0,
-                       (struct sockaddr*)&from, &fromlen);
-  if (n < 0)
+  n_bytes = recv(g_ping.sockfd, buffer, sizeof(buffer), 0);
+  gettimeofday(recv_time, NULL);
+  if (n_bytes < 0 || (size_t)n_bytes < sizeof(struct iphdr))
     return -1;
-  gettimeofday(&now, NULL);
+  *iphdr = *(struct iphdr*)buffer;
+  iphdr_len = iphdr->ihl * 4;
+  if ((size_t)n_bytes < iphdr_len + sizeof(struct icmphdr))
+    return -1;
+  icmp_packet->hdr = *(struct icmphdr*)(buffer + iphdr_len);
+  icmp_packet->payload_len = n_bytes - iphdr_len - sizeof(struct icmphdr);
+  if (icmp_packet->payload_len > PING_MAX_PAYLOAD_SIZE)
+    icmp_packet->payload_len = PING_MAX_PAYLOAD_SIZE;
+  memcpy(icmp_packet->payload, buffer + iphdr_len + sizeof(struct icmphdr),
+         icmp_packet->payload_len);
 
-  // struct iphdr* ip = (struct iphdr*)buffer;
-  // size_t ip_len = ip->ihl * 4;
-  // if ((size_t)n < ip_len + sizeof(struct icmphdr))
-  //   return -1;  // truncated / garbage
+  return 0;
+}
 
-  // struct icmphdr* icmp = (struct icmphdr*)(buffer + ip_len);
-  // size_t icmp_len = n - ip_len;
+static void update_rtt_stats(double rtt) {
+  if (rtt > g_ping.rtt_max)
+    g_ping.rtt_max = rtt;
+  if (rtt < g_ping.rtt_min || g_ping.rtt_min == 0)
+    g_ping.rtt_min = rtt;
+  g_ping.rtt_sum += rtt;
+  g_ping.rtt_sum_sq += rtt * rtt;
+}
 
-  // // a raw socket sees ALL icmp traffic: keep only our reply
-  // if (icmp->type != ICMP_ECHOREPLY ||
-  //     icmp->un.echo.id != htons(getpid() & 0xFFFF))
-  //   return 1;  // not ours: caller should keep waiting
+static int receive_echo_reply() {
+  struct iphdr iphdr;
+  t_icmp_packet icmp_packet;
+  struct timeval recv_time;
+  double rtt;
 
-  // char ip_str[INET_ADDRSTRLEN];
-  // inet_ntop(AF_INET, &from.sin_addr, ip_str, sizeof(ip_str));
-
-  // double rtt = (now.tv_sec - send_time.tv_sec) * 1000.0 +
-  //              (now.tv_usec - send_time.tv_usec) / 1000.0;
-
-  // printf("%zu bytes from %s: icmp_seq=%u ttl=%u time=%.3f ms\n", icmp_len,
-  //        ip_str, seq, ip->ttl, rtt);
+  if (read_packet(&iphdr, &icmp_packet, &recv_time) != 0)
+    return -1;
+  if (icmp_packet.hdr.type != ICMP_ECHOREPLY ||
+      icmp_packet.hdr.un.echo.id != htons(getpid() & 0xFFFF))
+    return -1;
   g_ping.reply_count++;
+  rtt = print_echo_reply(&iphdr, &icmp_packet, recv_time);
+  if (rtt != 0)
+    update_rtt_stats(rtt);
 
   return 0;
 }
@@ -115,6 +125,11 @@ static void set_select_timeout(struct timeval* select_timeout,
 void reset_ping() {
   g_ping.request_count = 0;
   g_ping.reply_count = 0;
+
+  g_ping.rtt_max = 0;
+  g_ping.rtt_min = 0;
+  g_ping.rtt_sum = 0;
+  g_ping.rtt_sum_sq = 0;
 }
 
 void run_ping() {
@@ -146,10 +161,6 @@ void run_ping() {
       else if (ready_fds == 1)
         receive_echo_reply();
     }
-
-    printf("--- %s ping statistics ---\n", target.hostname);
-    printf("%d packets transmitted, %d packets received, %d%% packet loss\n",
-           g_ping.request_count, g_ping.reply_count, 0);
-    printf("round-trip min/avg/max/stddev = 19.075/21.289/30.544/3.335 ms\n");
+    print_ping_stats(target.hostname);
   }
 }

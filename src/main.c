@@ -3,7 +3,6 @@
 t_ping g_ping = {.sockfd = -1, .payload_size = PING_DEFAULT_PAYLOAD_SIZE};
 
 static void cleanup(void) {
-  printf("exit\n");
   if (g_ping.sockfd >= 0)
     close(g_ping.sockfd);
 }
