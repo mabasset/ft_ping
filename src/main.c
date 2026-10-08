@@ -1,6 +1,8 @@
 #include "ft_ping.h"
 
-t_ping g_ping = {.sockfd = -1, .payload_size = PING_DEFAULT_PAYLOAD_SIZE};
+t_ping g_ping = {.sockfd = -1,
+                 .payload_size = PING_DEFAULT_PAYLOAD_SIZE,
+                 .linger_sec = PING_DEFAULT_LINGER_SEC};
 
 static void cleanup(void) {
   if (g_ping.sockfd >= 0)
@@ -48,5 +50,5 @@ int main(int argc, char* argv[]) {
   set_siganction();
   run_ping();
 
-  return 0;
+  return g_ping.exit_status;
 }

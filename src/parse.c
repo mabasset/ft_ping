@@ -14,22 +14,24 @@ static struct option options[] = {{"help", no_argument, NULL, OPT_HELP},
                                   {0, 0, 0, 0}};
 
 static size_t parse_optarg() {
-  size_t ret;
+  size_t num;
   char* stop;
 
-  ret = strtoul(optarg, &stop, 0);
+  num = strtoul(optarg, &stop, 0);
   if (*stop != '\0')
     print_invalid_value_exit(stop);
-  return ret;
+  return num;
 }
 
-static size_t parse_optarg_limit(size_t limit) {
-  size_t ret;
+static size_t parse_optarg_limit(size_t min, size_t max) {
+  size_t num;
 
-  ret = parse_optarg();
-  if (ret > limit)
+  num = parse_optarg();
+  if (num > max)
     print_big_value_exit();
-  return ret;
+  if (num < min)
+    print_small_value_exit();
+  return num;
 }
 
 static const char* get_long_option_name() {
@@ -75,7 +77,7 @@ void parse_flags(int argc, char* argv[]) {
         g_ping.packet_limit = parse_optarg();
         break;
       case 's':
-        g_ping.payload_size = parse_optarg_limit(PING_MAX_PAYLOAD_SIZE);
+        g_ping.payload_size = parse_optarg_limit(0, PING_MAX_PAYLOAD_SIZE);
         break;
       case 'v':
         g_ping.verbose = true;
@@ -83,7 +85,7 @@ void parse_flags(int argc, char* argv[]) {
       case 'V':
         print_version_exit();
       case 'W':
-        g_ping.linger_seconds = parse_optarg_limit(INT_MAX);
+        g_ping.linger_sec = parse_optarg_limit(1, INT_MAX);
         break;
       case ':':
         handle_missing_argument(argv);

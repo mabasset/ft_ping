@@ -21,6 +21,7 @@
 
 #define PING_DEFAULT_PAYLOAD_SIZE 56
 #define PING_MAX_PAYLOAD_SIZE 65399
+#define PING_DEFAULT_LINGER_SEC 10
 
 typedef struct {
   const char* hostname;
@@ -39,6 +40,9 @@ typedef struct {
   char** hosts;
   int host_count;
   volatile sig_atomic_t sigint;
+  int exit_status;
+
+  bool packet_limit_reached;
   size_t request_count;
   size_t reply_count;
   double rtt_max;
@@ -49,7 +53,7 @@ typedef struct {
   bool verbose;
   size_t packet_limit;
   size_t payload_size;
-  size_t linger_seconds;
+  size_t linger_sec;
 } t_ping;
 
 // print.c
@@ -59,9 +63,10 @@ void print_version_exit();
 void print_more_info_exit();
 void print_invalid_value_exit(const char* stop);
 void print_big_value_exit();
+void print_small_value_exit();
 void print_ping_header(const char* hostname,
                        const char* ip,
-                       const int payload_size);
+                       size_t payload_size);
 double print_echo_reply(const struct iphdr* iphdr,
                         const t_icmp_packet* icmp_packet,
                         struct timeval recv_time);

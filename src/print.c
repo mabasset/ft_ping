@@ -100,10 +100,22 @@ void print_big_value_exit() {
   exit(1);
 }
 
+void print_small_value_exit() {
+  fprintf(stderr, "ping: option value too small: %s\n", optarg);
+  exit(1);
+}
+
 void print_ping_header(const char* hostname,
                        const char* ip,
-                       const int payload_size) {
-  printf("PING %s (%s): %ld data bytes\n", hostname, ip, payload_size);
+                       size_t payload_size) {
+  uint16_t id;
+
+  id = getpid() & 0xFFFF;
+  if (g_ping.verbose)
+    printf("PING %s (%s): %zu data bytes, id 0x%04x = %u\n", hostname, ip,
+           payload_size, id, id);
+  else
+    printf("PING %s (%s): %zu data bytes\n", hostname, ip, payload_size);
 }
 
 double print_echo_reply(const struct iphdr* iphdr,
@@ -134,11 +146,19 @@ double print_echo_reply(const struct iphdr* iphdr,
 void print_ping_stats(const char* hostname) {
   double rtt_avg;
   double rtt_var;
+  size_t packet_loss;
 
   printf("--- %s ping statistics ---\n", hostname);
-  printf("%d packets transmitted, %d packets received, %d%% packet loss\n",
-         g_ping.request_count, g_ping.reply_count, 0);
-  if (g_ping.reply_count == 0)
+  packet_loss = 0;
+  if (g_ping.request_count > 0)
+    packet_loss = (g_ping.request_count - g_ping.reply_count) * 100 /
+                  g_ping.request_count;
+  printf("%d packets transmitted, %d packets received, %zu%% packet loss\n",
+         g_ping.request_count, g_ping.reply_count, packet_loss);
+  if (packet_loss == 100)
+    g_ping.exit_status = 1;
+
+  if (g_ping.rtt_sum == 0 || g_ping.reply_count == 0)
     return;
   rtt_avg = g_ping.rtt_sum / g_ping.reply_count;
   rtt_var = sqrt(g_ping.rtt_sum_sq / g_ping.reply_count - rtt_avg * rtt_avg);
