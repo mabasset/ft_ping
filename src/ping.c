@@ -108,26 +108,6 @@ static int receive_echo_reply() {
   return 0;
 }
 
-static int set_select_timeout(struct timeval* select_timeout,
-                              struct timeval send_time) {
-  struct timeval now;
-  long timeout_limit;
-  long timeout;
-
-  timeout_limit = 1000000L;
-  if (g_ping.packet_limit_reached)
-    timeout_limit += g_ping.linger_sec * 1000000L;
-  gettimeofday(&now, NULL);
-  timeout = timeout_limit - (timeval_to_usec(now) - timeval_to_usec(send_time));
-  if (timeout < 0)
-    timeout = 0;
-  if (timeout == 0 && g_ping.packet_limit_reached)
-    return 1;
-  *select_timeout = usec_to_timeval(timeout);
-
-  return 0;
-}
-
 void reset_ping() {
   g_ping.packet_limit_reached = false;
   g_ping.request_count = 0;
@@ -139,12 +119,49 @@ void reset_ping() {
   g_ping.rtt_sum_sq = 0;
 }
 
+static long estimate_select_timeout(struct timeval send_time) {
+  struct timeval now;
+  long timeout_limit;
+  long timeout;
+
+  timeout_limit = 1000000L;
+  if (g_ping.packet_limit_reached)
+    timeout_limit += g_ping.linger_sec * 1000000L;
+  gettimeofday(&now, NULL);
+  timeout = timeout_limit - (timeval_to_usec(now) - timeval_to_usec(send_time));
+  if (timeout < 0)
+    timeout = 0;
+
+  return timeout;
+}
+
+static int run_select(struct timeval send_time) {
+  fd_set fdset;
+  long usec_timeout;
+  struct timeval timeval_timeout;
+  int ready_fds;
+
+  FD_ZERO(&fdset);
+  FD_SET(g_ping.sockfd, &fdset);
+  usec_timeout = estimate_select_timeout(send_time);
+  if (usec_timeout == 0 && g_ping.packet_limit_reached)
+    return -1;
+  timeval_timeout = usec_to_timeval(usec_timeout);
+  ready_fds = select(g_ping.sockfd + 1, &fdset, NULL, NULL, &timeval_timeout);
+  if (ready_fds < 0) {
+    if (errno == EINTR)
+      return -1;
+    perror("ping: select");
+    exit(1);
+  }
+
+  return ready_fds;
+}
+
 void run_ping() {
   t_target target;
   struct timeval send_time;
-  struct timeval select_timeout;
   t_icmp_packet packet;
-  fd_set fdset;
   int ready_fds;
 
   for (int i = 0; i < g_ping.host_count; i++) {
@@ -154,17 +171,10 @@ void run_ping() {
     send_echo_request(&packet, &send_time, target.addr);
     while (!g_ping.sigint && (g_ping.packet_limit == 0 ||
                               g_ping.reply_count < g_ping.packet_limit)) {
-      FD_ZERO(&fdset);
-      FD_SET(g_ping.sockfd, &fdset);
-      if (set_select_timeout(&select_timeout, send_time) != 0)
+      ready_fds = run_select(send_time);
+      if (ready_fds < 0)
         break;
-      ready_fds =
-          select(g_ping.sockfd + 1, &fdset, NULL, NULL, &select_timeout);
-      if (ready_fds < 0) {
-        if (errno == EINTR)
-          continue;
-        exit(1);
-      } else if (ready_fds == 0 && !g_ping.packet_limit_reached)
+      else if (ready_fds == 0 && !g_ping.packet_limit_reached)
         send_echo_request(&packet, &send_time, target.addr);
       else if (ready_fds == 1)
         receive_echo_reply();
