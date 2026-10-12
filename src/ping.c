@@ -2,6 +2,17 @@
 
 extern t_ping g_ping;
 
+static void reset_ping() {
+  g_ping.packet_limit_reached = false;
+  g_ping.request_count = 0;
+  g_ping.reply_count = 0;
+
+  g_ping.rtt_max = 0;
+  g_ping.rtt_min = 0;
+  g_ping.rtt_sum = 0;
+  g_ping.rtt_sum_sq = 0;
+}
+
 static void resolve_target(const char* hostname, t_target* target) {
   struct addrinfo hints = {0};
   struct addrinfo* res;
@@ -16,107 +27,6 @@ static void resolve_target(const char* hostname, t_target* target) {
   target->addr = *(struct sockaddr_in*)res->ai_addr;
   inet_ntop(AF_INET, &target->addr.sin_addr, target->ip, sizeof(target->ip));
   freeaddrinfo(res);
-}
-
-void build_echo_request(t_icmp_packet* packet,
-                        uint16_t sequence,
-                        struct timeval* send_time) {
-  memset(packet, 0, sizeof(*packet));
-  packet->hdr.type = ICMP_ECHO;
-  packet->hdr.code = 0;
-  packet->hdr.un.echo.id = htons(getpid() & 0xFFFF);
-  packet->hdr.un.echo.sequence = htons(sequence);
-  size_t i = 0;
-  if (g_ping.payload_size >= sizeof(struct timeval)) {
-    i = sizeof(struct timeval);
-    memcpy(packet->payload, send_time, sizeof(struct timeval));
-  }
-  while (i < g_ping.payload_size) {
-    packet->payload[i] = (char)i;
-    i++;
-  }
-  packet->hdr.checksum = 0;
-  packet->hdr.checksum =
-      checksum(packet, sizeof(packet->hdr) + g_ping.payload_size);
-}
-
-static void send_echo_request(t_icmp_packet* packet,
-                              struct timeval* send_time,
-                              struct sockaddr_in addr) {
-  gettimeofday(send_time, NULL);
-  build_echo_request(packet, g_ping.request_count, send_time);
-  sendto(g_ping.sockfd, packet, sizeof(packet->hdr) + g_ping.payload_size, 0,
-         (struct sockaddr*)&addr, sizeof(addr));
-  g_ping.request_count++;
-  if (g_ping.packet_limit == g_ping.request_count)
-    g_ping.packet_limit_reached = true;
-}
-
-static ssize_t read_packet(struct iphdr* iphdr,
-                           t_icmp_packet* icmp_packet,
-                           struct timeval* recv_time) {
-  char buffer[MAX_IPHDR_SIZE + sizeof(struct icmphdr) + PING_MAX_PAYLOAD_SIZE];
-  ssize_t n_bytes;
-  size_t iphdr_len;
-
-  n_bytes = recv(g_ping.sockfd, buffer, sizeof(buffer), 0);
-  gettimeofday(recv_time, NULL);
-  if (n_bytes < 0 || (size_t)n_bytes < sizeof(struct iphdr))
-    return -1;
-  *iphdr = *(struct iphdr*)buffer;
-  iphdr_len = iphdr->ihl * 4;
-  if ((size_t)n_bytes < iphdr_len + sizeof(struct icmphdr))
-    return -1;
-  icmp_packet->hdr = *(struct icmphdr*)(buffer + iphdr_len);
-  icmp_packet->payload_len = n_bytes - iphdr_len - sizeof(struct icmphdr);
-  if (icmp_packet->payload_len > PING_MAX_PAYLOAD_SIZE)
-    icmp_packet->payload_len = PING_MAX_PAYLOAD_SIZE;
-  memcpy(icmp_packet->payload, buffer + iphdr_len + sizeof(struct icmphdr),
-         icmp_packet->payload_len);
-
-  return 0;
-}
-
-static void update_rtt_stats(double rtt) {
-  if (rtt > g_ping.rtt_max)
-    g_ping.rtt_max = rtt;
-  if (rtt < g_ping.rtt_min || g_ping.rtt_min == 0)
-    g_ping.rtt_min = rtt;
-  g_ping.rtt_sum += rtt;
-  g_ping.rtt_sum_sq += rtt * rtt;
-}
-
-static int receive_echo_reply() {
-  struct iphdr iphdr;
-  t_icmp_packet icmp_packet;
-  struct timeval recv_time;
-  double rtt;
-
-  if (read_packet(&iphdr, &icmp_packet, &recv_time) != 0)
-    return -1;
-  if (icmp_packet.hdr.type != ICMP_ECHOREPLY ||
-      icmp_packet.hdr.un.echo.id != htons(getpid() & 0xFFFF))
-    return -1;
-  if (checksum(&icmp_packet,
-               sizeof(icmp_packet.hdr) + icmp_packet.payload_len) != 0)
-    print_checksum_mismatch(&iphdr);
-  g_ping.reply_count++;
-  rtt = print_echo_reply(&iphdr, &icmp_packet, recv_time);
-  if (rtt != 0)
-    update_rtt_stats(rtt);
-
-  return 0;
-}
-
-void reset_ping() {
-  g_ping.packet_limit_reached = false;
-  g_ping.request_count = 0;
-  g_ping.reply_count = 0;
-
-  g_ping.rtt_max = 0;
-  g_ping.rtt_min = 0;
-  g_ping.rtt_sum = 0;
-  g_ping.rtt_sum_sq = 0;
 }
 
 static long estimate_select_timeout(struct timeval send_time) {

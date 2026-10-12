@@ -15,29 +15,23 @@ void print_ping_header(const char* hostname,
     printf("PING %s (%s): %zu data bytes\n", hostname, ip, payload_size);
 }
 
-double print_echo_reply(const struct iphdr* iphdr,
-                        const t_icmp_packet* icmp_packet,
-                        struct timeval recv_time) {
+void print_echo_reply(const struct iphdr* iphdr,
+                      const t_icmp_packet* icmp_packet,
+                      double rtt) {
   uint16_t sequence;
   char replier_ip[INET_ADDRSTRLEN];
-  struct timeval send_time;
-  double rtt;
 
   sequence = ntohs(icmp_packet->hdr.un.echo.sequence);
   inet_ntop(AF_INET, &iphdr->saddr, replier_ip, sizeof(replier_ip));
-  if (icmp_packet->payload_len < sizeof(struct timeval)) {
+  if (rtt != 0) {
+    printf("%zu bytes from %s: icmp_seq=%u ttl=%u time=%.3f ms\n",
+           icmp_packet->payload_len + sizeof(struct icmphdr), replier_ip,
+           sequence, iphdr->ttl, rtt);
+  } else {
     printf("%zu bytes from %s: icmp_seq=%u ttl=%u\n",
            icmp_packet->payload_len + sizeof(struct icmphdr), replier_ip,
            sequence, iphdr->ttl);
-    return 0;
   }
-  memcpy(&send_time, icmp_packet->payload, sizeof(send_time));
-  rtt = timeval_to_ms(recv_time) - timeval_to_ms(send_time);
-  printf("%zu bytes from %s: icmp_seq=%u ttl=%u time=%.3f ms\n",
-         icmp_packet->payload_len + sizeof(struct icmphdr), replier_ip,
-         sequence, iphdr->ttl, rtt);
-
-  return rtt;
 }
 
 void print_ping_stats(const char* hostname) {
@@ -54,7 +48,6 @@ void print_ping_stats(const char* hostname) {
          g_ping.request_count, g_ping.reply_count, packet_loss);
   if (packet_loss == 100)
     g_ping.exit_status = 1;
-
   if (g_ping.rtt_sum == 0 || g_ping.reply_count == 0)
     return;
   rtt_avg = g_ping.rtt_sum / g_ping.reply_count;
@@ -75,6 +68,41 @@ void print_checksum_mismatch(const struct iphdr* iphdr) {
 
   inet_ntop(AF_INET, &iphdr->saddr, replier_ip, sizeof(replier_ip));
   printf("checksum mismatch from %s\n", replier_ip);
+}
+
+static const t_icmp_error g_icmp_errors[] = {
+    {ICMP_DEST_UNREACH, ICMP_NET_UNREACH, "Destination Net Unreachable"},
+    {ICMP_DEST_UNREACH, ICMP_HOST_UNREACH, "Destination Host Unreachable"},
+    {ICMP_DEST_UNREACH, ICMP_PROT_UNREACH, "Destination Protocol Unreachable"},
+    {ICMP_DEST_UNREACH, ICMP_PORT_UNREACH, "Destination Port Unreachable"},
+    {ICMP_DEST_UNREACH, ICMP_FRAG_NEEDED, "Fragmentation needed and DF set"},
+    {ICMP_DEST_UNREACH, ICMP_SR_FAILED, "Source Route Failed"},
+    {ICMP_DEST_UNREACH, ICMP_NET_UNKNOWN, "Network Unknown"},
+    {ICMP_DEST_UNREACH, ICMP_HOST_UNKNOWN, "Host Unknown"},
+    {ICMP_DEST_UNREACH, ICMP_HOST_ISOLATED, "Host Isolated"},
+    {ICMP_DEST_UNREACH, ICMP_NET_ANO, "Destination Network Prohibited"},
+    {ICMP_DEST_UNREACH, ICMP_HOST_ANO, "Destination Host Prohibited"},
+    {ICMP_DEST_UNREACH, ICMP_NET_UNR_TOS, "Network Unreachable for TOS"},
+    {ICMP_DEST_UNREACH, ICMP_HOST_UNR_TOS, "Host Unreachable for TOS"},
+    {ICMP_DEST_UNREACH, ICMP_PKT_FILTERED, "Packet filtered"},
+    {ICMP_DEST_UNREACH, ICMP_PREC_VIOLATION, "Precedence Violation"},
+    {ICMP_DEST_UNREACH, ICMP_PREC_CUTOFF, "Precedence Cutoff"},
+    {ICMP_REDIRECT, ICMP_REDIR_NET, "Redirect Network"},
+    {ICMP_REDIRECT, ICMP_REDIR_HOST, "Redirect Host"},
+    {ICMP_REDIRECT, ICMP_REDIR_NETTOS, "Redirect Type of Service and Network"},
+    {ICMP_REDIRECT, ICMP_REDIR_HOSTTOS, "Redirect Type of Service and Host"},
+    {ICMP_TIME_EXCEEDED, ICMP_EXC_TTL, "Time to live exceeded"},
+    {ICMP_TIME_EXCEEDED, ICMP_EXC_FRAGTIME, "Frag reassembly time exceeded"},
+    {ICMP_SOURCE_QUENCH, 0, "Source Quench"},
+    {ICMP_PARAMETERPROB, 0, "Parameter problem"},
+};
+
+static const char* icmp_error_msg(uint8_t type, uint8_t code) {
+  for (size_t i = 0; i < sizeof(g_icmp_errors) / sizeof(*g_icmp_errors); i++)
+    if (g_icmp_errors[i].type == type && g_icmp_errors[i].code == code)
+      return g_icmp_errors[i].msg;
+
+  return NULL;
 }
 
 void print_ip_dump(const struct iphdr* ip, const struct icmphdr* icmp) {

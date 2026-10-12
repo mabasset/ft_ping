@@ -78,9 +78,9 @@ void print_small_value_exit();
 void print_ping_header(const char* hostname,
                        const char* ip,
                        size_t payload_size);
-double print_echo_reply(const struct iphdr* iphdr,
-                        const t_icmp_packet* icmp_packet,
-                        struct timeval recv_time);
+void print_echo_reply(const struct iphdr* iphdr,
+                      const t_icmp_packet* icmp_packet,
+                      double rtt);
 void print_ping_stats(const char* hostname);
 void print_unknown_host_exit();
 void print_checksum_mismatch(const struct iphdr* iphdr);
@@ -95,5 +95,10 @@ void parse_flags(int argc, char* argv[]);
 void parse_hosts(int argc, char* argv[]);
 
 void run_ping();
+
+void send_echo_request(t_icmp_packet* packet,
+                       struct timeval* send_time,
+                       struct sockaddr_in addr);
+void receive_echo_reply();
 
 #endif
