@@ -20,8 +20,11 @@
 #include <unistd.h>
 
 #define PING_DEFAULT_PAYLOAD_SIZE 56
-#define PING_MAX_PAYLOAD_SIZE 65399
+#define PING_MAX_PAYLOAD_SIZE \
+  65399  // 65535 - 60 (max IP hdr) - 76 (max ICMP error: 8 + 60 inner IP hdr +
+         // 8)
 #define PING_DEFAULT_LINGER_SEC 10
+#define MAX_IPHDR_SIZE 60  // 15 * 4
 
 typedef struct {
   const char* hostname;
@@ -56,7 +59,13 @@ typedef struct {
   size_t linger_sec;
 } t_ping;
 
-// print.c
+typedef struct {
+  uint8_t type;
+  uint8_t code;
+  const char* msg;
+} t_icmp_error;
+
+// parse_print.c
 void print_usage_exit();
 void print_help_exit();
 void print_version_exit();
@@ -64,6 +73,8 @@ void print_more_info_exit();
 void print_invalid_value_exit(const char* stop);
 void print_big_value_exit();
 void print_small_value_exit();
+
+// ping_print.c
 void print_ping_header(const char* hostname,
                        const char* ip,
                        size_t payload_size);
@@ -71,6 +82,8 @@ double print_echo_reply(const struct iphdr* iphdr,
                         const t_icmp_packet* icmp_packet,
                         struct timeval recv_time);
 void print_ping_stats(const char* hostname);
+void print_unknown_host_exit();
+void print_checksum_mismatch(const struct iphdr* iphdr);
 
 // math.c
 uint16_t checksum(void* data, int len);

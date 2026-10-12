@@ -10,10 +10,8 @@ static void resolve_target(const char* hostname, t_target* target) {
   hints.ai_socktype = SOCK_RAW;
   hints.ai_protocol = IPPROTO_ICMP;
   hints.ai_flags = 0;
-  if (getaddrinfo(hostname, NULL, &hints, &res) != 0) {
-    fprintf(stderr, "ping: unknown host\n");
-    exit(1);
-  }
+  if (getaddrinfo(hostname, NULL, &hints, &res) != 0)
+    print_unknown_host_exit();
   target->hostname = hostname;
   target->addr = *(struct sockaddr_in*)res->ai_addr;
   inet_ntop(AF_INET, &target->addr.sin_addr, target->ip, sizeof(target->ip));
@@ -57,8 +55,7 @@ static void send_echo_request(t_icmp_packet* packet,
 static ssize_t read_packet(struct iphdr* iphdr,
                            t_icmp_packet* icmp_packet,
                            struct timeval* recv_time) {
-  char buffer[15 * 4 + sizeof(struct icmphdr) +
-              PING_MAX_PAYLOAD_SIZE];  // max IP header + ICMP packet
+  char buffer[MAX_IPHDR_SIZE + sizeof(struct icmphdr) + PING_MAX_PAYLOAD_SIZE];
   ssize_t n_bytes;
   size_t iphdr_len;
 
@@ -100,6 +97,9 @@ static int receive_echo_reply() {
   if (icmp_packet.hdr.type != ICMP_ECHOREPLY ||
       icmp_packet.hdr.un.echo.id != htons(getpid() & 0xFFFF))
     return -1;
+  if (checksum(&icmp_packet,
+               sizeof(icmp_packet.hdr) + icmp_packet.payload_len) != 0)
+    print_checksum_mismatch(&iphdr);
   g_ping.reply_count++;
   rtt = print_echo_reply(&iphdr, &icmp_packet, recv_time);
   if (rtt != 0)

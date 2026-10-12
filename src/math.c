@@ -2,9 +2,11 @@
 
 // RFC 1071 Internet checksum
 uint16_t checksum(void* data, int len) {
-  uint16_t* buf = data;
-  uint32_t sum = 0;
+  uint16_t* buf;
+  uint32_t sum;
 
+  buf = (uint16_t*)data;
+  sum = 0;
   for (; len > 1; len -= 2)
     sum += *buf++;
   if (len == 1)
