@@ -2,9 +2,9 @@
 
 extern t_ping g_ping;
 
-static void build_echo_request(t_icmp_packet* packet,
-                               uint16_t sequence,
-                               struct timeval* send_time) {
+static void build_request(t_icmp_packet* packet,
+                          uint16_t sequence,
+                          struct timeval* send_time) {
   memset(packet, 0, sizeof(*packet));
   packet->hdr.type = ICMP_ECHO;
   packet->hdr.code = 0;
@@ -24,14 +24,19 @@ static void build_echo_request(t_icmp_packet* packet,
       checksum(packet, sizeof(packet->hdr) + g_ping.payload_size);
 }
 
-void send_echo_request(t_icmp_packet* packet,
-                       struct timeval* send_time,
-                       struct sockaddr_in addr) {
+void send_request(t_icmp_packet* packet,
+                  struct timeval* send_time,
+                  struct sockaddr_in addr) {
+  if (g_ping.request_limit_reached)
+    return;
   gettimeofday(send_time, NULL);
-  build_echo_request(packet, g_ping.request_count, send_time);
-  sendto(g_ping.sockfd, packet, sizeof(packet->hdr) + g_ping.payload_size, 0,
-         (struct sockaddr*)&addr, sizeof(addr));
+  build_request(packet, g_ping.request_count, send_time);
+  if (sendto(g_ping.sockfd, packet, sizeof(packet->hdr) + g_ping.payload_size,
+             0, (struct sockaddr*)&addr, sizeof(addr)) < 0) {
+    perror("ping: sending packet");
+    exit(1);
+  }
   g_ping.request_count++;
   if (g_ping.packet_limit == g_ping.request_count)
-    g_ping.packet_limit_reached = true;
+    g_ping.request_limit_reached = true;
 }

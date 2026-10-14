@@ -1,8 +1,6 @@
 #ifndef FT_PING_H
 #define FT_PING_H
 
-#include "../libmb/libmb.h"
-
 #include <arpa/inet.h>
 #include <errno.h>
 #include <getopt.h>
@@ -45,9 +43,10 @@ typedef struct {
   volatile sig_atomic_t sigint;
   int exit_status;
 
-  bool packet_limit_reached;
+  bool request_limit_reached;
   size_t request_count;
   size_t reply_count;
+  size_t error_count;
   double rtt_max;
   double rtt_min;
   double rtt_sum;
@@ -62,7 +61,7 @@ typedef struct {
 typedef struct {
   uint8_t type;
   uint8_t code;
-  const char* msg;
+  char* msg;
 } t_icmp_error;
 
 // parse_print.c
@@ -73,17 +72,7 @@ void print_more_info_exit();
 void print_invalid_value_exit(const char* stop);
 void print_big_value_exit();
 void print_small_value_exit();
-
-// ping_print.c
-void print_ping_header(const char* hostname,
-                       const char* ip,
-                       size_t payload_size);
-void print_echo_reply(const struct iphdr* iphdr,
-                      const t_icmp_packet* icmp_packet,
-                      double rtt);
-void print_ping_stats(const char* hostname);
-void print_unknown_host_exit();
-void print_checksum_mismatch(const struct iphdr* iphdr);
+void print_missing_host_exit();
 
 // math.c
 uint16_t checksum(void* data, int len);
@@ -91,14 +80,19 @@ long timeval_to_usec(struct timeval tv);
 double timeval_to_ms(struct timeval tv);
 struct timeval usec_to_timeval(long us);
 
-void parse_flags(int argc, char* argv[]);
-void parse_hosts(int argc, char* argv[]);
+void parse_args(int argc, char* argv[]);
 
 void run_ping();
 
-void send_echo_request(t_icmp_packet* packet,
-                       struct timeval* send_time,
-                       struct sockaddr_in addr);
-void receive_echo_reply();
+void send_request(t_icmp_packet* packet,
+                  struct timeval* send_time,
+                  struct sockaddr_in addr);
+
+void receive_reply();
+
+void handle_reply_error(const struct iphdr* outer_iphdr,
+                        const t_icmp_packet* outer_icmp_packet,
+                        const struct iphdr* inner_iphdr,
+                        const t_icmp_packet* inner_icmp_packet);
 
 #endif

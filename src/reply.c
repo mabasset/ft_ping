@@ -2,6 +2,32 @@
 
 extern t_ping g_ping;
 
+static void print_checksum_mismatch(const struct iphdr* iphdr) {
+  char replier_ip[INET_ADDRSTRLEN];
+
+  inet_ntop(AF_INET, &iphdr->saddr, replier_ip, sizeof(replier_ip));
+  printf("checksum mismatch from %s\n", replier_ip);
+}
+
+static void print_reply(const struct iphdr* iphdr,
+                        const t_icmp_packet* icmp_packet,
+                        double rtt) {
+  uint16_t sequence;
+  char replier_ip[INET_ADDRSTRLEN];
+
+  sequence = ntohs(icmp_packet->hdr.un.echo.sequence);
+  inet_ntop(AF_INET, &iphdr->saddr, replier_ip, sizeof(replier_ip));
+  if (rtt != 0) {
+    printf("%zu bytes from %s: icmp_seq=%u ttl=%u time=%.3f ms\n",
+           icmp_packet->payload_len + sizeof(struct icmphdr), replier_ip,
+           sequence, iphdr->ttl, rtt);
+  } else {
+    printf("%zu bytes from %s: icmp_seq=%u ttl=%u\n",
+           icmp_packet->payload_len + sizeof(struct icmphdr), replier_ip,
+           sequence, iphdr->ttl);
+  }
+}
+
 static void update_rtt_stats(double rtt) {
   if (rtt == 0)
     return;
@@ -60,18 +86,35 @@ static int get_packet_from_socket(struct iphdr* iphdr,
   return get_packet_from_buffer(buffer, n_bytes, iphdr, icmp_packet);
 }
 
-void handle_reply_error(struct iphdr* outer_iphdr,
+static int check_packet(struct iphdr* outer_iphdr,
                         t_icmp_packet* outer_icmp_packet) {
   struct iphdr inner_iphdr;
   t_icmp_packet inner_icmp_packet;
 
-  if (get_packet_from_buffer(outer_icmp_packet->payload,
-                             outer_icmp_packet->payload_len, &inner_iphdr,
-                             &inner_icmp_packet))
-    return;
+  if (outer_icmp_packet->hdr.type == ICMP_ECHO)
+    return -1;
+  else if (outer_icmp_packet->hdr.type != ICMP_ECHOREPLY) {
+    if (g_ping.verbose &&
+        get_packet_from_buffer(outer_icmp_packet->payload,
+                               outer_icmp_packet->payload_len, &inner_iphdr,
+                               &inner_icmp_packet) == 0) {
+      if (inner_icmp_packet.hdr.un.echo.id != htons(getpid() & 0xFFFF))
+        return 0;
+      handle_reply_error(outer_iphdr, outer_icmp_packet, &inner_iphdr,
+                         &inner_icmp_packet);
+    }
+    g_ping.error_count++;
+    return -1;
+  } else if (outer_icmp_packet->hdr.un.echo.id != htons(getpid() & 0xFFFF))
+    return -1;
+  else if (checksum(outer_icmp_packet, sizeof(outer_icmp_packet->hdr) +
+                                           outer_icmp_packet->payload_len) != 0)
+    print_checksum_mismatch(outer_iphdr);
+
+  return 0;
 }
 
-void receive_echo_reply() {
+void receive_reply() {
   struct iphdr iphdr;
   t_icmp_packet icmp_packet;
   struct timeval recv_time;
@@ -79,17 +122,10 @@ void receive_echo_reply() {
 
   if (get_packet_from_socket(&iphdr, &icmp_packet, &recv_time) < 0)
     return;
-  else if (icmp_packet.hdr.un.echo.id != htons(getpid() & 0xFFFF))
+  else if (check_packet(&iphdr, &icmp_packet) < 0)
     return;
-  else if (icmp_packet.hdr.type != ICMP_ECHOREPLY) {
-    if (g_ping.verbose)
-      handle_reply_error(&iphdr, &icmp_packet);
-    return;
-  } else if (checksum(&icmp_packet,
-                      sizeof(icmp_packet.hdr) + icmp_packet.payload_len) != 0)
-    print_checksum_mismatch(&iphdr);
   g_ping.reply_count++;
   rtt = compute_rtt(&icmp_packet, recv_time);
-  print_echo_reply(&iphdr, &icmp_packet, rtt);
+  print_reply(&iphdr, &icmp_packet, rtt);
   update_rtt_stats(rtt);
 }

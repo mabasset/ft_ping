@@ -61,7 +61,7 @@ static void handle_invalid_option(char* argv[]) {
   print_more_info_exit();
 }
 
-void parse_flags(int argc, char* argv[]) {
+void parse_args(int argc, char* argv[]) {
   int opt;
   int index = 0;
   opterr = 0;
@@ -95,13 +95,8 @@ void parse_flags(int argc, char* argv[]) {
         break;
     }
   }
-}
-
-void parse_hosts(int argc, char* argv[]) {
   g_ping.host_count = argc - optind;
-  if (g_ping.host_count <= 0) {
-    fprintf(stderr, "ping: missing host operand\n");
-    print_more_info_exit();
-  }
+  if (g_ping.host_count <= 0)
+    print_missing_host_exit();
   g_ping.hosts = argv + optind;
 }

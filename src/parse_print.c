@@ -17,7 +17,7 @@ void print_usage_exit() {
       "            [--quiet] [--route] [--size=NUMBER] [--help] [--usage] "
       "[--version]\n"
       "            HOST ...\n";
-  ft_putstr(usage);
+  printf(usage);
   exit(0);
 }
 
@@ -65,7 +65,7 @@ void print_help_exit() {
       "for any corresponding short options.\n\n"
       "Options marked with (root only) are available only to superuser.\n\n"
       "Report bugs to <bug-inetutils@gnu.org>.\n";
-  ft_putstr(help);
+  printf(help);
   exit(0);
 }
 
@@ -78,7 +78,7 @@ void print_version_exit() {
       "This is free software: you are free to change and redistribute it.\n"
       "There is NO WARRANTY, to the extent permitted by law.\n\n"
       "Written by Sergey Poznyakoff.\n";
-  ft_putstr(version);
+  printf(version);
   exit(0);
 }
 
@@ -101,4 +101,9 @@ void print_big_value_exit() {
 void print_small_value_exit() {
   fprintf(stderr, "ping: option value too small: %s\n", optarg);
   exit(1);
+}
+
+void print_missing_host_exit() {
+  fprintf(stderr, "ping: missing host operand\n");
+  print_more_info_exit();
 }

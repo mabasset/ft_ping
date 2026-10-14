@@ -6,6 +6,6 @@ sudo iptables -D INPUT -i lo -p icmp --icmp-type echo-request \
   -m statistic --mode random --probability 0.3 \
   -j REJECT --reject-with icmp-host-unreachable
 
-sudo tc qdisc add dev lo root netem corrupt 30%;
-ping -c 20 127.0.0.1;
+sudo tc qdisc add dev lo root netem corrupt 30%; \
+ping -c 20 127.0.0.1; \
 sudo tc qdisc del dev lo root
