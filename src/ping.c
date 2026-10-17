@@ -10,7 +10,7 @@ static void print_ping_header(const char* hostname,
   id = getpid() & 0xFFFF;
   printf("PING %s (%s): %zu data bytes", hostname, ip, payload_size);
   if (g_ping.verbose)
-    printf(" id 0x%04x = %u", id, id);
+    printf(", id 0x%04x = %u", id, id);
   printf("\n");
 }
 

@@ -24,6 +24,7 @@
 #define PING_DEFAULT_LINGER_SEC 10
 #define MAX_IPHDR_SIZE 60  // 15 * 4
 #define SEQ_BITMAP_BITS 1024
+#define MAX_TTL 255
 
 typedef struct {
   const char* hostname;
@@ -57,6 +58,7 @@ typedef struct {
   size_t packet_limit;
   size_t payload_size;
   size_t linger_sec;
+  size_t ttl;
 } t_ping;
 
 typedef struct {

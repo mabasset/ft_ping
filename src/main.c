@@ -23,6 +23,13 @@ static void create_socket() {
       perror("ping: socket");
     exit(1);
   }
+  if (g_ping.ttl > 0) {
+    int ttl = g_ping.ttl;
+    if (setsockopt(g_ping.sockfd, IPPROTO_IP, IP_TTL, &ttl, sizeof(ttl)) < 0) {
+      perror("ping: setsockopt");
+      exit(1);
+    }
+  }
 }
 
 static void drop_sudo() {

@@ -2,7 +2,7 @@
 
 extern t_ping g_ping;
 
-enum { OPT_HELP = 1, OPT_USAGE };
+enum { OPT_HELP = 1, OPT_USAGE, OPT_TTL };
 static struct option options[] = {{"help", no_argument, NULL, OPT_HELP},
                                   {"usage", no_argument, NULL, OPT_USAGE},
                                   {"count", required_argument, NULL, 'c'},
@@ -11,6 +11,7 @@ static struct option options[] = {{"help", no_argument, NULL, OPT_HELP},
                                   {"version", no_argument, NULL, 'V'},
                                   {"timeout", required_argument, NULL, 'w'},
                                   {"linger", required_argument, NULL, 'W'},
+                                  {"ttl", required_argument, NULL, OPT_TTL},
                                   {0, 0, 0, 0}};
 
 static size_t parse_optarg() {
@@ -73,6 +74,9 @@ void parse_flags(int argc, char* argv[]) {
         print_help_exit();
       case OPT_USAGE:
         print_usage_exit();
+      case OPT_TTL:
+        g_ping.ttl = parse_optarg_limit(1, MAX_TTL);
+        break;
       case 'c':
         g_ping.packet_limit = parse_optarg();
         break;
