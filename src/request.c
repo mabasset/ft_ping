@@ -36,6 +36,7 @@ void send_request(t_icmp_packet* packet,
     perror("ping: sending packet");
     exit(1);
   }
+  bitmap_clear(g_ping.seq_bitmap, g_ping.request_count);
   g_ping.request_count++;
   if (g_ping.packet_limit == g_ping.request_count)
     g_ping.request_limit_reached = true;

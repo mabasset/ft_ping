@@ -8,11 +8,10 @@ static void print_ping_header(const char* hostname,
   uint16_t id;
 
   id = getpid() & 0xFFFF;
+  printf("PING %s (%s): %zu data bytes", hostname, ip, payload_size);
   if (g_ping.verbose)
-    printf("PING %s (%s): %zu data bytes, id 0x%04x = %u\n", hostname, ip,
-           payload_size, id, id);
-  else
-    printf("PING %s (%s): %zu data bytes\n", hostname, ip, payload_size);
+    printf(" id 0x%04x = %u", id, id);
+  printf("\n");
 }
 
 static void print_ping_stats(const char* hostname) {
@@ -21,20 +20,25 @@ static void print_ping_stats(const char* hostname) {
   size_t packet_loss;
 
   printf("--- %s ping statistics ---\n", hostname);
+  printf("%zu packets transmitted, %zu packets received, ",
+         g_ping.request_count, (g_ping.reply_count - g_ping.duplicate_count));
+  if (g_ping.duplicate_count > 0)
+    printf("+%zu duplicates, ", g_ping.duplicate_count);
   packet_loss = 0;
   if (g_ping.request_count > 0)
-    packet_loss = (g_ping.request_count - g_ping.reply_count) * 100 /
-                  g_ping.request_count;
-  printf("%d packets transmitted, %d packets received, %zu%% packet loss\n",
-         g_ping.request_count, g_ping.reply_count, packet_loss);
+    packet_loss =
+        (g_ping.request_count - (g_ping.reply_count - g_ping.duplicate_count)) *
+        100 / g_ping.request_count;
+  printf("%zu%% packet loss\n", packet_loss);
   if (packet_loss == 100)
     g_ping.exit_status = 1;
   if (g_ping.rtt_sum == 0 || g_ping.reply_count == 0)
     return;
   rtt_avg = g_ping.rtt_sum / g_ping.reply_count;
-  rtt_var = sqrt(g_ping.rtt_sum_sq / g_ping.reply_count - rtt_avg * rtt_avg);
+  rtt_var = g_ping.rtt_sum_sq / g_ping.reply_count - rtt_avg * rtt_avg;
   if (rtt_var < 0)
     rtt_var = 0;
+  rtt_var = sqrt(rtt_var);
   printf("round-trip min/avg/max/stddev = %.3f/%.3f/%.3f/%.3f ms\n",
          g_ping.rtt_min, rtt_avg, g_ping.rtt_max, rtt_var);
 }
@@ -44,11 +48,14 @@ static void reset_ping() {
   g_ping.request_count = 0;
   g_ping.reply_count = 0;
   g_ping.error_count = 0;
+  g_ping.duplicate_count = 0;
 
   g_ping.rtt_max = 0;
   g_ping.rtt_min = 0;
   g_ping.rtt_sum = 0;
   g_ping.rtt_sum_sq = 0;
+
+  memset(g_ping.seq_bitmap, 0, sizeof(g_ping.seq_bitmap));
 }
 
 static void resolve_target(const char* hostname, t_target* target) {
@@ -108,15 +115,15 @@ static int run_select(struct timeval send_time) {
   return ready_fds;
 }
 
-void run_ping() {
+void run_ping(char** hosts, int host_count) {
   t_target target;
   struct timeval send_time;
   t_icmp_packet packet;
   int ready_fds;
 
-  for (int i = 0; i < g_ping.host_count; i++) {
+  for (int i = 0; i < host_count; i++) {
     reset_ping();
-    resolve_target(g_ping.hosts[i], &target);
+    resolve_target(hosts[i], &target);
     print_ping_header(target.hostname, target.ip, g_ping.payload_size);
     send_request(&packet, &send_time, target.addr);
     while (!g_ping.sigint &&

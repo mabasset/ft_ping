@@ -52,52 +52,49 @@ static void translate_saddr(uint32_t saddr, char* out, size_t out_size) {
     snprintf(out, out_size, "%s", ip);
 }
 
-static void print_ip_dump(const struct iphdr* ip, const struct icmphdr* icmp) {
+void print_reply_error(const struct iphdr* iphdr,
+                       const t_icmp_packet* icmp_packet) {
+  char from[64];
+  char* msg;
+
+  translate_saddr(iphdr->saddr, from, sizeof(from));
+  msg = get_error_msg(icmp_packet->hdr.type, icmp_packet->hdr.code);
+  if (msg == NULL)
+    msg = "Unknown Error";
+  printf("%zu bytes from %s: %s\n",
+         sizeof(struct icmphdr) + icmp_packet->payload_len, from, msg);
+}
+
+void print_ip_dump(const struct iphdr* iphdr, const struct icmphdr* icmphdr) {
   const uint8_t* bytes;
   size_t hlen;
   uint16_t frag_off;
   char src[INET_ADDRSTRLEN];
   char dst[INET_ADDRSTRLEN];
 
-  bytes = (const uint8_t*)ip;
+  bytes = (const uint8_t*)iphdr;
   printf("IP Hdr Dump:\n ");
   for (size_t i = 0; i < sizeof(struct iphdr); i++)
     printf("%02x%s", bytes[i], (i % 2) ? " " : "");
   printf("\n");
 
-  inet_ntop(AF_INET, &ip->saddr, src, sizeof(src));
-  inet_ntop(AF_INET, &ip->daddr, dst, sizeof(dst));
-  frag_off = ntohs(ip->frag_off);
+  inet_ntop(AF_INET, &iphdr->saddr, src, sizeof(src));
+  inet_ntop(AF_INET, &iphdr->daddr, dst, sizeof(dst));
+  frag_off = ntohs(iphdr->frag_off);
   printf("Vr HL TOS  Len   ID Flg  off TTL Pro  cks      Src\tDst\tData\n");
   printf(" %1x  %1x  %02x %04x %04x   %1x %04x  %02x  %02x %04x %s  %s ",
-         ip->version, ip->ihl, ip->tos, ntohs(ip->tot_len), ntohs(ip->id),
-         (frag_off & 0xe000) >> 13, frag_off & 0x1fff, ip->ttl, ip->protocol,
-         ntohs(ip->check), src, dst);
-  hlen = ip->ihl * 4;
+         iphdr->version, iphdr->ihl, iphdr->tos, ntohs(iphdr->tot_len),
+         ntohs(iphdr->id), (frag_off & 0xe000) >> 13, frag_off & 0x1fff,
+         iphdr->ttl, iphdr->protocol, ntohs(iphdr->check), src, dst);
+  hlen = iphdr->ihl * 4;
   for (size_t i = sizeof(struct iphdr); i < hlen; i++)  // IP options, if any
     printf("%02x", bytes[i]);
   printf("\n");
 
-  printf("ICMP: type %u, code %u, size %u", icmp->type, icmp->code,
-         ntohs(ip->tot_len) - (unsigned)hlen);
-  if (icmp->type == ICMP_ECHO || icmp->type == ICMP_ECHOREPLY)
-    printf(", id 0x%04x, seq 0x%04x", ntohs(icmp->un.echo.id),
-           ntohs(icmp->un.echo.sequence));
+  printf("ICMP: type %u, code %u, size %u", icmphdr->type, icmphdr->code,
+         ntohs(iphdr->tot_len) - (unsigned)hlen);
+  if (icmphdr->type == ICMP_ECHO || icmphdr->type == ICMP_ECHOREPLY)
+    printf(", id 0x%04x, seq 0x%04x", ntohs(icmphdr->un.echo.id),
+           ntohs(icmphdr->un.echo.sequence));
   printf("\n");
-}
-
-void handle_reply_error(const struct iphdr* outer_iphdr,
-                        const t_icmp_packet* outer_icmp_packet,
-                        const struct iphdr* inner_iphdr,
-                        const t_icmp_packet* inner_icmp_packet) {
-  char from[64];
-  char* msg;
-
-  translate_saddr(outer_iphdr->saddr, from, sizeof(from));
-  msg = get_error_msg(outer_icmp_packet->hdr.type, outer_icmp_packet->hdr.code);
-  if (msg == NULL)
-    msg = "Unknown Error";
-  printf("%zu bytes from %s: %s\n",
-         sizeof(struct icmphdr) + outer_icmp_packet->payload_len, from, msg);
-  print_ip_dump(inner_iphdr, &inner_icmp_packet->hdr);
 }

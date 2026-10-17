@@ -12,6 +12,8 @@ HDR = $(addprefix $(S_DIR), ft_ping.h)
 CFLAGS = -std=gnu23
 LIBFLAGS = -lm
 
+PREFIX = /usr/local
+
 all: $(NAME)
 
 $(NAME): $(LIB) $(OBJ)
@@ -35,4 +37,10 @@ setuid: $(NAME)
 	sudo chown root:root ./$(NAME)
 	sudo chmod u+s ./$(NAME)
 
-.PHONY: all clean fclean re setuid
+install: $(NAME)
+	sudo install -o root -g root -m 4755 $(NAME) $(PREFIX)/bin/$(NAME)
+
+uninstall:
+	sudo rm -f $(PREFIX)/bin/$(NAME)
+
+.PHONY: all clean fclean re setuid install uninstall

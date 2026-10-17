@@ -41,14 +41,21 @@ static void set_siganction() {
 }
 
 int main(int argc, char* argv[]) {
-  setvbuf(stdout, NULL, _IOLBF, 0);  // override stdout mode to make it line
-                                     // buffered to fix the shell pipe
-  parse_args(argc, argv);
+  char** hosts;
+  int host_count;
+
+  setvbuf(stdout, NULL, _IOLBF, 0);  // override stdout mode to make it
+                                     // line buffered to fix the shell pipe
+  parse_flags(argc, argv);
+  host_count = argc - optind;
+  if (host_count <= 0)
+    print_missing_host_exit();
+  hosts = argv + optind;
   create_socket();
   atexit(cleanup);
   drop_sudo();
   set_siganction();
-  run_ping();
+  run_ping(hosts, host_count);
 
   return g_ping.exit_status;
 }

@@ -23,6 +23,7 @@
          // 8)
 #define PING_DEFAULT_LINGER_SEC 10
 #define MAX_IPHDR_SIZE 60  // 15 * 4
+#define SEQ_BITMAP_BITS 1024
 
 typedef struct {
   const char* hostname;
@@ -38,8 +39,6 @@ typedef struct {
 
 typedef struct {
   int sockfd;
-  char** hosts;
-  int host_count;
   volatile sig_atomic_t sigint;
   int exit_status;
 
@@ -47,6 +46,8 @@ typedef struct {
   size_t request_count;
   size_t reply_count;
   size_t error_count;
+  size_t duplicate_count;
+  uint8_t seq_bitmap[SEQ_BITMAP_BITS / 8];
   double rtt_max;
   double rtt_min;
   double rtt_sum;
@@ -80,9 +81,9 @@ long timeval_to_usec(struct timeval tv);
 double timeval_to_ms(struct timeval tv);
 struct timeval usec_to_timeval(long us);
 
-void parse_args(int argc, char* argv[]);
+void parse_flags(int argc, char* argv[]);
 
-void run_ping();
+void run_ping(char** hosts, int host_count);
 
 void send_request(t_icmp_packet* packet,
                   struct timeval* send_time,
@@ -90,9 +91,13 @@ void send_request(t_icmp_packet* packet,
 
 void receive_reply();
 
-void handle_reply_error(const struct iphdr* outer_iphdr,
-                        const t_icmp_packet* outer_icmp_packet,
-                        const struct iphdr* inner_iphdr,
-                        const t_icmp_packet* inner_icmp_packet);
+void print_reply_error(const struct iphdr* iphdr,
+                       const t_icmp_packet* icmp_packet);
+void print_ip_dump(const struct iphdr* iphdr,
+                   const struct icmphdr* icmp_packet);
+
+void bitmap_set(uint8_t* bitmap, uint16_t seq);
+void bitmap_clear(uint8_t* bitmap, uint16_t seq);
+int bitmap_test(const uint8_t* bitmap, uint16_t seq);
 
 #endif
