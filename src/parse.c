@@ -88,7 +88,7 @@ void parse_flags(int argc, char* argv[]) {
   int index = 0;
   opterr = 0;
 
-  while ((opt = getopt_long(argc, argv, ":c:i:s:w:W:vV", options, &index)) !=
+  while ((opt = getopt_long(argc, argv, ":c:i:s:W:vV", options, &index)) !=
          -1) {
     switch (opt) {
       case OPT_HELP:
