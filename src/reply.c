@@ -106,7 +106,6 @@ static int check_packet(struct iphdr* iphdr, t_icmp_packet* icmp_packet) {
     default:
       if (get_packet_from_buffer(icmp_packet->payload, icmp_packet->payload_len,
                                  &inner_iphdr, &inner_icmp_packet) < 0 ||
-          // inner_iphdr.daddr != g_ping.dest.sin_addr.s_addr ||
           inner_iphdr.protocol != IPPROTO_ICMP ||
           inner_icmp_packet.hdr.type != ICMP_ECHO ||
           inner_icmp_packet.hdr.un.echo.id != htons(getpid() & 0xFFFF))
