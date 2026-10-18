@@ -76,14 +76,14 @@ static void resolve_target(const char* hostname, t_target* target) {
   freeaddrinfo(res);
 }
 
-static long estimate_select_timeout(struct timeval send_time) {
+static long long estimate_select_timeout(struct timeval send_time) {
   struct timeval now;
-  long timeout_limit;
-  long timeout;
+  long long timeout_limit;
+  long long timeout;
 
-  timeout_limit = 1000000L;
+  timeout_limit = g_ping.interval * 1000000L;
   if (g_ping.request_limit_reached)
-    timeout_limit += g_ping.linger_sec * 1000000L;
+    timeout_limit += g_ping.linger * 1000000L;
   gettimeofday(&now, NULL);
   timeout = timeout_limit - (timeval_to_usec(now) - timeval_to_usec(send_time));
   if (timeout < 0)
@@ -94,7 +94,7 @@ static long estimate_select_timeout(struct timeval send_time) {
 
 static int run_select(struct timeval send_time) {
   fd_set fdset;
-  long usec_timeout;
+  long long usec_timeout;
   struct timeval timeval_timeout;
   int ready_fds;
 

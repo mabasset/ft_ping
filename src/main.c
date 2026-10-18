@@ -2,7 +2,8 @@
 
 t_ping g_ping = {.sockfd = -1,
                  .payload_size = PING_DEFAULT_PAYLOAD_SIZE,
-                 .linger_sec = PING_DEFAULT_LINGER_SEC};
+                 .linger = PING_DEFAULT_LINGER_SEC,
+                 .interval = 1};
 
 static void cleanup(void) {
   if (g_ping.sockfd >= 0)

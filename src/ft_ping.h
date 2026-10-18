@@ -18,13 +18,22 @@
 #include <unistd.h>
 
 #define PING_DEFAULT_PAYLOAD_SIZE 56
-#define PING_MAX_PAYLOAD_SIZE \
-  65399  // 65535 - 60 (max IP hdr) - 76 (max ICMP error: 8 + 60 inner IP hdr +
-         // 8)
+#define PING_MIN_PAYLOAD_SIZE 0
+#define PING_MAX_PAYLOAD_SIZE 65399
+
 #define PING_DEFAULT_LINGER_SEC 10
-#define MAX_IPHDR_SIZE 60  // 15 * 4
-#define SEQ_BITMAP_BITS 1024
-#define MAX_TTL 255
+#define PING_MIN_LINGER_SEC 1
+#define PING_MAX_LINGER_SEC INT_MAX
+
+#define PING_MIN_INTERVAL_SEC 0.2
+#define PING_MAX_INTERVAL_SEC INT_MAX
+
+#define PING_MIN_TTL 0
+#define PING_MAX_TTL 255
+
+#define PING_MAX_IPHDR_SIZE 60
+
+#define PING_SEQ_BITMAP_BITS 1024
 
 typedef struct {
   const char* hostname;
@@ -48,7 +57,7 @@ typedef struct {
   size_t reply_count;
   size_t error_count;
   size_t duplicate_count;
-  uint8_t seq_bitmap[SEQ_BITMAP_BITS / 8];
+  uint8_t seq_bitmap[PING_SEQ_BITMAP_BITS / 8];
   double rtt_max;
   double rtt_min;
   double rtt_sum;
@@ -57,7 +66,8 @@ typedef struct {
   bool verbose;
   size_t packet_limit;
   size_t payload_size;
-  size_t linger_sec;
+  double interval;
+  size_t linger;
   size_t ttl;
 } t_ping;
 
@@ -79,9 +89,9 @@ void print_missing_host_exit();
 
 // math.c
 uint16_t checksum(void* data, int len);
-long timeval_to_usec(struct timeval tv);
+long long timeval_to_usec(struct timeval tv);
 double timeval_to_ms(struct timeval tv);
-struct timeval usec_to_timeval(long us);
+struct timeval usec_to_timeval(long long us);
 
 void parse_flags(int argc, char* argv[]);
 

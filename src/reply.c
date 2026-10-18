@@ -79,7 +79,8 @@ static int get_packet_from_buffer(const char* buffer,
 static int get_packet_from_socket(struct iphdr* iphdr,
                                   t_icmp_packet* icmp_packet,
                                   struct timeval* recv_time) {
-  char buffer[MAX_IPHDR_SIZE + sizeof(struct icmphdr) + PING_MAX_PAYLOAD_SIZE];
+  char buffer[PING_MAX_IPHDR_SIZE + sizeof(struct icmphdr) +
+              PING_MAX_PAYLOAD_SIZE];
   ssize_t n_bytes;
 
   n_bytes = recv(g_ping.sockfd, buffer, sizeof(buffer), 0);
