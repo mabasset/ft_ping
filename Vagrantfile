@@ -16,7 +16,7 @@ Vagrant.configure(2) do |config|
     set -e
     export DEBIAN_FRONTEND=noninteractive
     apt-get update
-    apt-get install -y build-essential wget iptables nftables
+    apt-get install -y build-essential wget iptables nftables tmux
 
     if [ ! -x /usr/local/inetutils-2.0/bin/ping ]; then
       mkdir -p /tmp/inetutils-build

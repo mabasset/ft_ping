@@ -19,16 +19,38 @@ test_cases=(
   "--ttl 3 -c3 -v 192.178.194.100"
   "--interval 0 -c 3 localhost"
   "-i2 -c3 192.178.194.100"
+  "-vc3 192.168.1.250"
 )
 
 prog="$1"
+total=$(( ${#test_cases[@]} + 2))
 
 for i in "${!test_cases[@]}"; do
   args="${test_cases[$i]}"
-  echo "=== TEST $((i + 1))/${#test_cases[@]}: $prog $args ==="
+
+  echo "=== TEST $((i + 1))/${total}: $prog $args ==="
   timeout -s INT "$TIMEOUT" $prog $args 2>&1
   echo "--- $prog exit: $?"
   echo
   sleep "$SLEEP"
 done
+
+args="-vc10 localhost"
+
+echo "=== TEST $(( ${total} - 1))/${total}: $prog $args ==="
+sudo tc qdisc replace dev lo root netem corrupt 30%
+$prog $args
+echo "--- $prog exit: $?"
+echo
+sudo tc qdisc del dev lo root 2>/dev/null
+
+sleep "$SLEEP"
+
+echo "=== TEST ${total}/${total}: $prog $args ==="
+sudo tc qdisc replace dev lo root netem duplicate 50%
+$prog $args
+echo "--- $prog exit: $?"
+echo
+sudo tc qdisc del dev lo root 2>/dev/null
+
 echo "=== ALL TESTS DONE ==="
