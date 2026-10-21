@@ -55,16 +55,16 @@ static double compute_rtt(const t_icmp_packet* icmp_packet,
 }
 
 static int get_packet_from_buffer(const char* buffer,
-                                  ssize_t buffer_len,
+                                  size_t buffer_len,
                                   struct iphdr* iphdr,
                                   t_icmp_packet* icmp_packet) {
   size_t iphdr_len;
 
-  if (buffer_len < 0 || (size_t)buffer_len < sizeof(struct iphdr))
+  if (buffer_len < sizeof(struct iphdr))
     return -1;
   *iphdr = *(struct iphdr*)buffer;
   iphdr_len = iphdr->ihl * 4;
-  if ((size_t)buffer_len < iphdr_len + sizeof(struct icmphdr))
+  if (buffer_len < iphdr_len + sizeof(struct icmphdr))
     return -1;
   icmp_packet->hdr = *(struct icmphdr*)(buffer + iphdr_len);
   icmp_packet->payload_len = buffer_len - iphdr_len - sizeof(struct icmphdr);
@@ -84,9 +84,11 @@ static int get_packet_from_socket(struct iphdr* iphdr,
   ssize_t n_bytes;
 
   n_bytes = recv(g_ping.sockfd, buffer, sizeof(buffer), 0);
+  if (n_bytes < 0)
+    return -1;
   gettimeofday(recv_time, NULL);
 
-  return get_packet_from_buffer(buffer, n_bytes, iphdr, icmp_packet);
+  return get_packet_from_buffer(buffer, (size_t)n_bytes, iphdr, icmp_packet);
 }
 
 static int check_packet(struct iphdr* iphdr, t_icmp_packet* icmp_packet) {
@@ -97,7 +99,7 @@ static int check_packet(struct iphdr* iphdr, t_icmp_packet* icmp_packet) {
     case ICMP_ECHO:
       return -1;
     case ICMP_ECHOREPLY:
-      if (icmp_packet->hdr.un.echo.id != htons(getpid() & 0xFFFF))
+      if (icmp_packet->hdr.un.echo.id != htons(g_ping.pid))
         return -1;
       else if (checksum(icmp_packet, sizeof(icmp_packet->hdr) +
                                          icmp_packet->payload_len) != 0)
@@ -108,7 +110,7 @@ static int check_packet(struct iphdr* iphdr, t_icmp_packet* icmp_packet) {
                                  &inner_iphdr, &inner_icmp_packet) < 0 ||
           inner_iphdr.protocol != IPPROTO_ICMP ||
           inner_icmp_packet.hdr.type != ICMP_ECHO ||
-          inner_icmp_packet.hdr.un.echo.id != htons(getpid() & 0xFFFF))
+          inner_icmp_packet.hdr.un.echo.id != htons(g_ping.pid))
         return -1;
       print_reply_error(iphdr, icmp_packet);
       if (g_ping.verbose)

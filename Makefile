@@ -9,7 +9,7 @@ OBJ = $(patsubst $(S_DIR)%.c, $(O_DIR)%.o, $(SRCS))
 
 HDR = $(addprefix $(S_DIR), ft_ping.h)
 
-CFLAGS = -Wextra -Werror -Wall -std=gnu23
+CFLAGS = -Wextra -Werror -Wall -Wconversion -std=gnu23
 LIBFLAGS = -lm
 
 PREFIX = /usr/local

@@ -25,7 +25,7 @@ static void create_socket() {
     exit(1);
   }
   if (g_ping.ttl > 0) {
-    int ttl = g_ping.ttl;
+    int ttl = (int)g_ping.ttl;
     if (setsockopt(g_ping.sockfd, IPPROTO_IP, IP_TTL, &ttl, sizeof(ttl)) < 0) {
       perror("ping: setsockopt");
       exit(1);
@@ -63,6 +63,7 @@ int main(int argc, char* argv[]) {
   atexit(cleanup);
   drop_sudo();
   set_siganction();
+  g_ping.pid = (uint16_t)getpid();
   run_ping(hosts, host_count);
 
   return g_ping.exit_status;

@@ -2,14 +2,12 @@
 
 extern t_ping g_ping;
 
-static void build_request(t_icmp_packet* packet,
-                          uint16_t sequence,
-                          struct timeval* send_time) {
+static void build_request(t_icmp_packet* packet, struct timeval* send_time) {
   memset(packet, 0, sizeof(*packet));
   packet->hdr.type = ICMP_ECHO;
   packet->hdr.code = 0;
-  packet->hdr.un.echo.id = htons(getpid() & 0xFFFF);
-  packet->hdr.un.echo.sequence = htons(sequence);
+  packet->hdr.un.echo.id = htons(g_ping.pid);
+  packet->hdr.un.echo.sequence = htons((uint16_t)g_ping.request_count);
   size_t i = 0;
   if (g_ping.payload_size >= sizeof(struct timeval)) {
     i = sizeof(struct timeval);
@@ -30,13 +28,13 @@ void send_request(t_icmp_packet* packet,
   if (g_ping.request_limit_reached)
     return;
   gettimeofday(send_time, NULL);
-  build_request(packet, g_ping.request_count, send_time);
+  build_request(packet, send_time);
   if (sendto(g_ping.sockfd, packet, sizeof(packet->hdr) + g_ping.payload_size,
              0, (struct sockaddr*)&addr, sizeof(addr)) < 0) {
     perror("ping: sending packet");
     exit(1);
   }
-  bitmap_clear(g_ping.seq_bitmap, g_ping.request_count);
+  bitmap_clear(g_ping.seq_bitmap, (uint16_t)g_ping.request_count);
   g_ping.request_count++;
   if (g_ping.packet_limit == g_ping.request_count)
     g_ping.request_limit_reached = true;

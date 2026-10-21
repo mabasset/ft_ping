@@ -29,7 +29,7 @@
 #define PING_MIN_INTERVAL_SEC 0.2
 #define PING_MAX_INTERVAL_SEC INT_MAX
 
-#define PING_MIN_TTL 0
+#define PING_MIN_TTL 1
 #define PING_MAX_TTL 255
 
 #define PING_MAX_IPHDR_SIZE 60
@@ -51,6 +51,7 @@ typedef struct {
 typedef struct {
   int sockfd;
   volatile sig_atomic_t sigint;
+  uint16_t pid;
   int exit_status;
 
   bool request_limit_reached;
@@ -89,7 +90,7 @@ void print_small_value_exit();
 void print_missing_host_exit();
 
 // math.c
-uint16_t checksum(void* data, int len);
+uint16_t checksum(void* data, size_t len);
 long long timeval_to_usec(struct timeval tv);
 double timeval_to_ms(struct timeval tv);
 struct timeval usec_to_timeval(long long us);

@@ -5,12 +5,9 @@ extern t_ping g_ping;
 static void print_ping_header(const char* hostname,
                               const char* ip,
                               size_t payload_size) {
-  uint16_t id;
-
-  id = getpid() & 0xFFFF;
   printf("PING %s (%s): %zu data bytes", hostname, ip, payload_size);
   if (g_ping.verbose)
-    printf(", id 0x%04x = %u", id, id);
+    printf(", id 0x%04x = %u", g_ping.pid, g_ping.pid);
   printf("\n");
 }
 
@@ -34,8 +31,8 @@ static void print_ping_stats(const char* hostname) {
     g_ping.exit_status = 1;
   if (g_ping.rtt_sum == 0 || g_ping.reply_count == 0)
     return;
-  rtt_avg = g_ping.rtt_sum / g_ping.reply_count;
-  rtt_var = g_ping.rtt_sum_sq / g_ping.reply_count - rtt_avg * rtt_avg;
+  rtt_avg = g_ping.rtt_sum / (double)g_ping.reply_count;
+  rtt_var = g_ping.rtt_sum_sq / (double)g_ping.reply_count - rtt_avg * rtt_avg;
   if (rtt_var < 0)
     rtt_var = 0;
   rtt_var = sqrt(rtt_var);
@@ -81,9 +78,9 @@ static long long estimate_select_timeout(struct timeval send_time) {
   long long timeout_limit;
   long long timeout;
 
-  timeout_limit = g_ping.interval * 1000000L;
+  timeout_limit = (long long)(g_ping.interval * 1000000);
   if (g_ping.request_limit_reached)
-    timeout_limit += g_ping.linger * 1000000L;
+    timeout_limit += (long long)g_ping.linger * 1000000;
   gettimeofday(&now, NULL);
   timeout = timeout_limit - (timeval_to_usec(now) - timeval_to_usec(send_time));
   if (timeout < 0)

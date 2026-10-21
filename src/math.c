@@ -1,7 +1,7 @@
 #include "ft_ping.h"
 
 // RFC 1071 Internet checksum
-uint16_t checksum(void* data, int len) {
+uint16_t checksum(void* data, size_t len) {
   uint16_t* buf;
   uint32_t sum;
 
@@ -22,7 +22,7 @@ long long timeval_to_usec(struct timeval tv) {
 }
 
 double timeval_to_ms(struct timeval tv) {
-  return tv.tv_sec * 1000.0 + tv.tv_usec / 1000.0;
+  return (double)tv.tv_sec * 1000.0 + (double)tv.tv_usec / 1000.0;
 }
 
 struct timeval usec_to_timeval(long long us) {
