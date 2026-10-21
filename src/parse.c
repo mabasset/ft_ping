@@ -93,8 +93,10 @@ void parse_flags(int argc, char* argv[]) {
     switch (opt) {
       case OPT_HELP:
         print_help_exit();
+        break;
       case OPT_USAGE:
         print_usage_exit();
+        break;
       case OPT_TTL:
         g_ping.ttl = parse_optarg_limit(PING_MIN_TTL, PING_MAX_TTL);
         break;
@@ -114,14 +116,17 @@ void parse_flags(int argc, char* argv[]) {
         break;
       case 'V':
         print_version_exit();
+        break;
       case 'W':
         g_ping.linger =
             parse_optarg_limit(PING_MIN_LINGER_SEC, PING_MAX_LINGER_SEC);
         break;
       case ':':
         handle_missing_argument(argv);
+        break;
       case '?':
         handle_invalid_option(argv);
+        break;
       default:
         break;
     }
