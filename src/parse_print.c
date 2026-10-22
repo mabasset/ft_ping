@@ -17,7 +17,7 @@ void print_usage_exit() {
       "            [--quiet] [--route] [--size=NUMBER] [--help] [--usage] "
       "[--version]\n"
       "            HOST ...\n";
-  printf(usage);
+  fputs(usage, stdout);
   exit(0);
 }
 
@@ -65,7 +65,7 @@ void print_help_exit() {
       "for any corresponding short options.\n\n"
       "Options marked with (root only) are available only to superuser.\n\n"
       "Report bugs to <bug-inetutils@gnu.org>.\n";
-  printf(help);
+  fputs(help, stdout);
   exit(0);
 }
 
@@ -78,7 +78,7 @@ void print_version_exit() {
       "This is free software: you are free to change and redistribute it.\n"
       "There is NO WARRANTY, to the extent permitted by law.\n\n"
       "Written by Sergey Poznyakoff.\n";
-  printf(version);
+  fputs(version, stdout);
   exit(0);
 }
 
