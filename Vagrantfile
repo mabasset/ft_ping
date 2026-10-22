@@ -1,15 +1,14 @@
 Vagrant.configure(2) do |config|
-  config.vm.box = "debian/trixie64"
-  config.vm.box_version = "13.20260519.1"
+  config.vm.box = "bento/debian-13"
+  config.vm.box_version = "202510.26.0"
   config.vm.hostname = 'ft-ping'
   config.vm.define 'ft_ping'
-  config.vm.synced_folder '.', '/vagrant', type: 'nfs', disabled: false
+  config.vm.synced_folder '.', '/vagrant'
 
-  config.vm.provider 'libvirt' do |v|
-    v.memory = 4056
+  config.vm.provider 'virtualbox' do |v|
+    v.name = 'ft_ping'
+    v.memory = 4096
     v.cpus = 2
-    v.driver = 'kvm'
-    v.default_prefix = ''
   end
 
   config.vm.provision 'shell', inline: <<-SHELL
